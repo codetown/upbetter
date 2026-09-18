@@ -1,0 +1,68 @@
+name: upbetter
+description: "Upbetter — 极致高性能的 AI 图像超分辨率桌面工具，Upscayl 的平替实现"
+# 这是一个桌面应用而非可发布的 package。
+publish_to: 'none'
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.3
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 窗口管理：无边框自绘标题栏与窗口状态记忆
+  window_manager: ^0.5.2
+  desktop_drop: ^0.8.4
+  file_selector: ^1.1.0
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  crypto: ^3.0.7
+  archive: ^4.3.0
+  material_symbols_icons: ^4.2960.0
+  ffi: ^2.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+  # 仅 tool/generate_icon.dart 使用：把 assets/icon.png 转成多尺寸 ICO。
+  image: ^4.10.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # 界面内展示用的品牌图标（256px）。
+    # 原图 assets/icon.png 只作为图标生成器的源文件，不参与打包。
+    - assets/icon_256.png
+
+# 应用图标由 tool/generate_icon.dart 生成：
+#   dart run tool/generate_icon.dart
+# 输出 windows/runner/resources/app_icon.ico，再由 Runner.rc 编译进 exe。
