@@ -1,7 +1,7 @@
 # Upbetter
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](#requirements)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](#system-requirements)
 [![Flutter 3.47](https://img.shields.io/badge/Flutter-3.47-02569B.svg)](https://flutter.dev)
 [![Engine: Real-ESRGAN](https://img.shields.io/badge/engine-Real--ESRGAN%20ncnn%20Vulkan-7C6BFF.svg)](https://github.com/xinntao/Real-ESRGAN)
 
@@ -19,7 +19,7 @@ after the one-time engine install, everything works fully offline.
 
 - [Features](#features)
 - [Performance Design](#performance-design)
-- [Requirements](#requirements)
+- [System Requirements](#system-requirements)
 - [Build & Run](#build--run)
 - [Usage Walkthrough](#usage-walkthrough)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -72,12 +72,12 @@ copying when hard links aren't available (e.g. across volumes).
 
 > Real log output (the app's logs and UI are written in Chinese):
 >
-> ```bash
+```bash
 > 批次 batch_1789679122175673：2 个文件（硬链接 2 个）
 > 启动推理：realesrgan-ncnn-vulkan.exe -i .../in -o .../out -n realesrgan-x4plus -s 4 -f jpg -v
 > 批次 batch_1789679122175673 完成，已写出 2 个文件
-> ```bash
->
+```
+
 > Two files → one process invocation.
 
 ### 2. Progress doesn't depend on the engine
@@ -89,7 +89,7 @@ in one tile.
 ```bash
 -t 64 (explicit tile): 196 progress steps
 -t 0  (auto)         : 0
-```bash
+```
 
 Auto tiling lets the engine pick the largest tile that fits in VRAM, which is the fastest
 option. So we **keep auto tiling** and instead interpolate progress client-side from measured
@@ -129,7 +129,7 @@ concurrency > 1 or in the gap between batches.
 
 ---
 
-## Requirements
+## System Requirements
 
 | Item | Requirement |
 | --- | --- |
@@ -154,7 +154,7 @@ flutter run -d windows
 
 # 3. Release build (output in build\windows\x64\runner\Release\)
 flutter build windows --release
-```bash
+```
 
 On first launch the app downloads the inference engine (~43 MB from the official
 Real-ESRGAN release), verifies its SHA-256, and extracts it.
@@ -167,7 +167,7 @@ dart run tool/fetch_runtime.dart
 
 # Verify image header parsing
 dart run tool/probe_check.dart <image paths...>
-```bash
+```
 
 ---
 
@@ -245,7 +245,7 @@ Pick **2× / 3× / 4×** in the "放大倍率" (Scale) section:
 
 ### 5. Configure output
 
-**Format**
+#### **Format**
 
 | Option | Notes |
 | --- | --- |
@@ -254,7 +254,7 @@ Pick **2× / 3× / 4×** in the "放大倍率" (Scale) section:
 | JPEG | Lossy, small files |
 | WebP | Modern format balancing size and quality |
 
-**Location**
+#### **Location**
 
 | Option | Notes |
 | --- | --- |
@@ -262,7 +262,7 @@ Pick **2× / 3× / 4×** in the "放大倍率" (Scale) section:
 | 子文件夹 (Subfolder) | Creates a named subfolder under the source directory |
 | 指定目录 (Custom) | Writes to a fixed folder; recently used folders are listed for one-click switching |
 
-**Naming**
+#### **Naming**
 
 Supported placeholders, with a live preview under the input:
 
@@ -277,7 +277,7 @@ Supported placeholders, with a live preview under the input:
 
 The default template is `{name}_upbetter`, producing `DSC_0421_upbetter.png`.
 
-**Overwrite existing files**
+#### **Overwrite existing files**
 
 - Off (default): appends `(1)`, `(2)`, … — never overwrites
 - On: replaces files with the same name
@@ -296,7 +296,7 @@ The default template is `{name}_upbetter`, producing `DSC_0421_upbetter.png`.
    - Right panel: overall progress, live throughput (MP/s), time remaining
    - Status bar: throughput, completed count
 
-**Stop vs. cancel**
+#### **Stop vs. cancel**
 
 | Action | Effect |
 | --- | --- |
@@ -318,7 +318,7 @@ When processing completes, the preview area switches to the **comparison view** 
 | **原图** (Original) | Original only |
 | **结果** (Result) | Upscaled result only |
 
-**Canvas controls**
+#### **Canvas controls**
 
 | Action | Effect |
 | --- | --- |
@@ -407,7 +407,7 @@ upbetter.exe --add "D:\photos" --add "E:\shot.png"
 
 # Import and start processing immediately (automation)
 upbetter.exe --add "D:\photos" --run
-```bash
+```
 
 | Argument | Meaning |
 | --- | --- |
@@ -457,7 +457,7 @@ tool/                                Development helper scripts (not shipped)
 └── extract_exe_icon.ps1             Pulls the icon back out of the exe to verify it was embedded
 
 test/                                Unit tests + end-to-end tests that really drive the engine
-```bash
+```
 
 ### Data directories
 
@@ -468,7 +468,7 @@ test/                                Unit tests + end-to-end tests that really d
 ├── cache\          Download cache and batch staging (auto-cleaned)
 ├── logs\           Run logs
 └── settings.json   Settings, window state, measured throughput
-```bash
+```
 
 ### Application icon
 
@@ -481,14 +481,14 @@ assets/icon.png
        └─ windows/runner/resources/app_icon.ico   (16/24/32/48/64/128/256)
             └─ windows/runner/Runner.rc           (IDI_APP_ICON)
                  └─ upbetter.exe                  (taskbar, title bar, Explorer)
-```bash
+```
 
 To change the icon, replace `assets/icon.png` and run:
 
 ```bash
 dart run tool/generate_icon.dart     # regenerate the ICO
 flutter build windows --release      # recompile it into the exe
-```bash
+```
 
 > Why not `flutter_launcher_icons`: for Windows it only produces a **single-size** ICO
 > (one 256×256 entry), leaving Windows to downscale 256px to 16/24/32px — which blurs icons
@@ -523,7 +523,7 @@ flutter test test/engine_integration_test.dart
 
 # Network tests: download and install the engine (~43 MB)
 UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
-```bash
+```
 
 | File | Coverage |
 | --- | --- |
@@ -588,7 +588,7 @@ flutter pub get
 dart run tool/fetch_runtime.dart     # fetch the engine; integration tests need it
 flutter analyze                      # must be clean before submitting
 flutter test                         # must be green before submitting
-```bash
+```
 
 ### Pre-submit checklist
 
@@ -616,7 +616,7 @@ Released under the **MIT License** — see [LICENSE](LICENSE).
 
 ```bash
 Copyright (c) 2026 Upbetter contributors
-```bash
+```
 
 ### Third-party components
 
