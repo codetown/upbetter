@@ -9,8 +9,10 @@
 
 > 极致高性能的 AI 图像超分辨率桌面工具 —— [Upscayl](https://github.com/upscayl/upscayl) 的平替实现
 
-![界面截图1](assets/screenshot1.png)
-![界面截图2](assets/screenshot2.png)
+![界面截图1](assets/screenshot1.png)  
+
+![界面截图2](assets/screenshot2.png)  
+
 基于 Flutter 3.47 构建，使用 Real-ESRGAN ncnn Vulkan 作为推理后端，
 在本地显卡上完成 2×/3×/4× 放大。**图片不离开你的电脑**，首次安装引擎后即可完全离线运行。
 
