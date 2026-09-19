@@ -9,6 +9,8 @@
 
 > A blazing-fast AI image upscaler for the desktop — an open-source alternative to [Upscayl](https://github.com/upscayl/upscayl)
 
+![screenshot1](assets/screenshot1.png)
+![screenshot2](assets/screenshot2.png)
 Built with Flutter 3.47, powered by Real-ESRGAN running on ncnn + Vulkan.
 Upscales 2×/3×/4× entirely on your local GPU. **Your images never leave your machine** —
 after the one-time engine install, everything works fully offline.
