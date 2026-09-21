@@ -10,6 +10,10 @@ import '../theme/tokens.dart';
 import '../util/system.dart';
 import '../widgets/primitives.dart';
 import 'compare_canvas.dart';
+import 'queue_panel.dart';
+import 'settings_panel.dart';
+import 'status_bar.dart';
+import '../shell/title_bar.dart';
 
 /// 中间的预览面板：工具栏 + 对比画布。
 class PreviewPanel extends StatefulWidget {
@@ -58,6 +62,12 @@ class _PreviewPanelState extends State<PreviewPanel> {
                   mode: _effectiveMode(job),
                   canvasKey: _canvasKey,
                   onJobSized: _scheduleFit,
+                  viewportInsets: const EdgeInsets.fromLTRB(
+                    QueuePanel.width + 1,
+                    TitleBar.defaultHeight,
+                    SettingsPanel.width + 1,
+                    StatusBar.height,
+                  ),
                 ),
               ),
               const Positioned(
@@ -172,12 +182,14 @@ class _CanvasHost extends StatefulWidget {
     required this.mode,
     required this.canvasKey,
     required this.onJobSized,
+    required this.viewportInsets,
   });
 
   final UpscaleJob job;
   final ViewMode mode;
   final GlobalKey<CompareCanvasState> canvasKey;
   final VoidCallback onJobSized;
+  final EdgeInsets viewportInsets;
 
   @override
   State<_CanvasHost> createState() => _CanvasHostState();
@@ -194,7 +206,10 @@ class _CanvasHostState extends State<_CanvasHost> {
   void didUpdateWidget(_CanvasHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     // 切换到另一个文件、或结果刚刚生成时，视图需要重新适配。
-    if (oldWidget.job.id != widget.job.id || oldWidget.mode != widget.mode) {
+    if (oldWidget.job.id != widget.job.id ||
+        oldWidget.mode != widget.mode ||
+        oldWidget.job.outputWidth != widget.job.outputWidth ||
+        oldWidget.job.outputHeight != widget.job.outputHeight) {
       widget.onJobSized();
     }
   }
@@ -233,6 +248,7 @@ class _CanvasHostState extends State<_CanvasHost> {
             afterPath: hasResult ? outputPath : null,
             logicalSize: logical,
             mode: hasResult ? widget.mode : ViewMode.original,
+            viewportInsets: widget.viewportInsets,
           );
         },
       ),

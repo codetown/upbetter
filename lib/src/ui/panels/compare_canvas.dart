@@ -35,6 +35,7 @@ class CompareCanvas extends StatefulWidget {
     required this.afterPath,
     required this.logicalSize,
     required this.mode,
+    this.viewportInsets = EdgeInsets.zero,
   });
 
   final String? beforePath;
@@ -46,19 +47,63 @@ class CompareCanvas extends StatefulWidget {
 
   final ViewMode mode;
 
+  /// 画布可以铺满窗口，但图片适配应以中间可视区域为基准。
+  final EdgeInsets viewportInsets;
+
   @override
   State<CompareCanvas> createState() => CompareCanvasState();
 }
 
-class CompareCanvasState extends State<CompareCanvas> {
+class CompareCanvasState extends State<CompareCanvas>
+    with SingleTickerProviderStateMixin {
   final TransformationController _controller = TransformationController();
+  late final AnimationController _zoomAnimation =
+      AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 120),
+        )
+        ..addListener(_tickZoomAnimation)
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            _zoomStart = null;
+            _zoomTarget = null;
+          }
+        });
 
   double _split = 0.5;
   bool _draggingSplit = false;
   bool _panning = false;
+  Matrix4? _zoomStart;
+  Matrix4? _zoomTarget;
+  Size? _lastViewport;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) fitToViewport(box.size);
+    });
+  }
+
+  @override
+  void didUpdateWidget(CompareCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.logicalSize != widget.logicalSize ||
+        oldWidget.beforePath != widget.beforePath ||
+        oldWidget.afterPath != widget.afterPath) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize) fitToViewport(box.size);
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _zoomAnimation.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -73,23 +118,43 @@ class CompareCanvasState extends State<CompareCanvas> {
         ..translateByDouble(dx, dy, 0, 1)
         ..scaleByDouble(scale, scale, 1, 1);
 
+  Rect _viewportRect(Size canvasSize) {
+    final width = math.max(
+      0.0,
+      canvasSize.width - widget.viewportInsets.horizontal,
+    );
+    final height = math.max(
+      0.0,
+      canvasSize.height - widget.viewportInsets.vertical,
+    );
+    return Rect.fromLTWH(
+      widget.viewportInsets.left,
+      widget.viewportInsets.top,
+      width,
+      height,
+    );
+  }
+
   void fitToViewport(Size viewport) {
-    if (viewport.isEmpty || widget.logicalSize.isEmpty) return;
+    final viewportRect = _viewportRect(viewport);
+    if (viewportRect.isEmpty || widget.logicalSize.isEmpty) return;
+    _cancelZoomAnimation();
     // 上限锁死在 1:1：这个工具的核心用途是判断放大质量，
     // 把小图拉伸到填满窗口会让人看到插值出来的假细节。
     final scale = math.min(
       1.0,
       math.min(
-        viewport.width / widget.logicalSize.width,
-        viewport.height / widget.logicalSize.height,
+        viewportRect.width / widget.logicalSize.width,
+        viewportRect.height / widget.logicalSize.height,
       ),
     );
     _controller.value = _compose(
-      (viewport.width - widget.logicalSize.width * scale) / 2,
-      (viewport.height - widget.logicalSize.height * scale) / 2,
+      viewportRect.left +
+          (viewportRect.width - widget.logicalSize.width * scale) / 2,
+      viewportRect.top +
+          (viewportRect.height - widget.logicalSize.height * scale) / 2,
       scale,
     );
-    setState(() {});
   }
 
   /// 1:1 显示，以窗口中心为锚点。
@@ -97,47 +162,127 @@ class CompareCanvasState extends State<CompareCanvas> {
     final current = _controller.value.getMaxScaleOnAxis();
     final target = 1.0;
     final factor = target / current;
-    _zoomAround(viewport.center(Offset.zero), factor, viewport);
+    _zoomAround(_viewportRect(viewport).center, factor, viewport);
   }
 
   double get currentScale => _controller.value.getMaxScaleOnAxis();
 
   /// 以视口中心为锚点缩放。供工具栏的 +/− 按钮使用。
   void zoomBy(double factor, Size viewport) {
-    _zoomAround(viewport.center(Offset.zero), factor, viewport);
+    _zoomAround(_viewportRect(viewport).center, factor, viewport);
   }
 
   void _zoomAround(Offset focal, double factor, Size viewport) {
-    final matrix = _controller.value;
+    _cancelZoomAnimation();
+    _applyZoomAround(focal, factor, viewport, _controller.value);
+  }
+
+  void _applyZoomAround(
+    Offset focal,
+    double factor,
+    Size viewport,
+    Matrix4 matrix,
+  ) {
     final currentScale = matrix.getMaxScaleOnAxis();
     final nextScale = (currentScale * factor).clamp(0.02, 16.0);
     if (nextScale == currentScale) return;
 
-    final applied = nextScale / currentScale;
-    // 保持焦点下的图像坐标不动：offset' = focal - (focal - offset) * applied
-    final next = _compose(
-      focal.dx - (focal.dx - matrix.storage[12]) * applied,
-      focal.dy - (focal.dy - matrix.storage[13]) * applied,
-      nextScale,
-    );
+    final next = nextScale < currentScale
+        ? _centeredTransform(viewport, nextScale)
+        : _zoomedTransform(focal, matrix, nextScale);
 
     _controller.value = _constrain(next, viewport, nextScale);
-    setState(() {});
+  }
+
+  void _zoomAroundSmooth(Offset focal, double factor, Size viewport) {
+    // 缩小时必须基于当前屏幕上的实际矩阵，不能使用已经完成的旧目标，
+    // 否则连续滚轮会跳过中间倍率，表现为图片突然变大或变小。
+    final base = factor < 1
+        ? _controller.value
+        : (_zoomTarget ?? _controller.value);
+    final currentScale = base.getMaxScaleOnAxis();
+    final nextScale = (currentScale * factor).clamp(0.02, 16.0);
+    if (nextScale == currentScale) return;
+
+    if (nextScale < currentScale) {
+      // 缩小时不要把当前拖拽偏移带入动画，否则连续滚轮事件会
+      // 在旧位置与中心位置之间插值，看起来像图片向右漂移。
+      _cancelZoomAnimation();
+      _controller.value = _centeredTransform(viewport, nextScale);
+      return;
+    }
+
+    final next = _zoomedTransform(focal, base, nextScale);
+    _zoomStart = Matrix4.copy(_controller.value);
+    _zoomTarget = _constrain(next, viewport, nextScale);
+    _zoomAnimation
+      ..stop()
+      ..forward(from: 0);
+  }
+
+  Matrix4 _centeredTransform(Size viewport, double scale) {
+    final rect = _viewportRect(viewport);
+    return _compose(
+      rect.left + (rect.width - widget.logicalSize.width * scale) / 2,
+      rect.top + (rect.height - widget.logicalSize.height * scale) / 2,
+      scale,
+    );
+  }
+
+  Matrix4 _zoomedTransform(Offset focal, Matrix4 matrix, double scale) {
+    final applied = scale / matrix.getMaxScaleOnAxis();
+    return _compose(
+      focal.dx - (focal.dx - matrix.storage[12]) * applied,
+      focal.dy - (focal.dy - matrix.storage[13]) * applied,
+      scale,
+    );
+  }
+
+  void _tickZoomAnimation() {
+    final target = _zoomTarget;
+    if (target == null) return;
+    final start = _zoomStart ?? _controller.value;
+    final progress = Curves.easeOut.transform(_zoomAnimation.value);
+    final scale = ui.lerpDouble(
+      start.getMaxScaleOnAxis(),
+      target.getMaxScaleOnAxis(),
+      progress,
+    )!;
+    _controller.value = _compose(
+      ui.lerpDouble(start.storage[12], target.storage[12], progress)!,
+      ui.lerpDouble(start.storage[13], target.storage[13], progress)!,
+      scale,
+    );
+  }
+
+  void _cancelZoomAnimation() {
+    if (_zoomTarget == null && !_zoomAnimation.isAnimating) return;
+    _zoomAnimation.stop();
+    _zoomStart = null;
+    _zoomTarget = null;
   }
 
   /// 限制平移范围，保证图像始终有可见部分，避免「划出去找不回来」。
   Matrix4 _constrain(Matrix4 matrix, Size viewport, double scale) {
+    final viewportRect = _viewportRect(viewport);
     final contentWidth = widget.logicalSize.width * scale;
     final contentHeight = widget.logicalSize.height * scale;
-    // 允许拖到只剩 15% 可见，既能自由查看边缘，又不至于丢失目标。
-    final marginX = math.min(viewport.width * 0.85, contentWidth * 0.85);
-    final marginY = math.min(viewport.height * 0.85, contentHeight * 0.85);
 
     var dx = matrix.storage[12];
     var dy = matrix.storage[13];
 
-    dx = dx.clamp(-contentWidth + marginX, viewport.width - marginX);
-    dy = dy.clamp(-contentHeight + marginY, viewport.height - marginY);
+    dx = contentWidth <= viewportRect.width
+        ? viewportRect.left + (viewportRect.width - contentWidth) / 2
+        : dx.clamp(
+            viewportRect.left + viewportRect.width - contentWidth,
+            viewportRect.left,
+          );
+    dy = contentHeight <= viewportRect.height
+        ? viewportRect.top + (viewportRect.height - contentHeight) / 2
+        : dy.clamp(
+            viewportRect.top + viewportRect.height - contentHeight,
+            viewportRect.top,
+          );
 
     if (dx == matrix.storage[12] && dy == matrix.storage[13]) return matrix;
     return _compose(dx, dy, scale);
@@ -145,8 +290,14 @@ class CompareCanvasState extends State<CompareCanvas> {
 
   void _onPointerSignal(PointerSignalEvent event, Size viewport) {
     if (event is! PointerScrollEvent) return;
-    final factor = math.exp(-event.scrollDelta.dy / 320);
-    _zoomAround(event.localPosition, factor, viewport);
+    // 触控板的小步长与鼠标滚轮的大步长统一到相近的手感，并限制单个
+    // 事件的跳变，避免某些鼠标驱动一次发出很大的滚轮增量。
+    final delta = (-event.scrollDelta.dy / 320).clamp(-0.22, 0.22);
+    if (delta == 0) return;
+    final focal = delta < 0
+        ? _viewportRect(viewport).center
+        : event.localPosition;
+    _zoomAroundSmooth(focal, math.exp(delta), viewport);
   }
 
   @override
@@ -157,6 +308,14 @@ class CompareCanvasState extends State<CompareCanvas> {
       builder: (context, constraints) {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
         if (viewport.isEmpty) return const SizedBox.shrink();
+
+        if (_lastViewport != viewport) {
+          _lastViewport = viewport;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || widget.logicalSize.isEmpty) return;
+            fitToViewport(viewport);
+          });
+        }
 
         return Listener(
           onPointerSignal: (event) => _onPointerSignal(event, viewport),
@@ -170,7 +329,10 @@ class CompareCanvasState extends State<CompareCanvas> {
                 zoomToActualSize(viewport);
               }
             },
-            onPanStart: (_) => setState(() => _panning = true),
+            onPanStart: (_) {
+              _cancelZoomAnimation();
+              setState(() => _panning = true);
+            },
             onPanEnd: (_) => setState(() => _panning = false),
             onPanUpdate: (details) {
               final matrix = _controller.value;
@@ -212,7 +374,11 @@ class CompareCanvasState extends State<CompareCanvas> {
                   Positioned(
                     left: Gap.md,
                     bottom: Gap.md,
-                    child: _ZoomReadout(scale: currentScale, tokens: t),
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) =>
+                          _ZoomReadout(scale: currentScale, tokens: t),
+                    ),
                   ),
                 ],
               ),
@@ -230,23 +396,24 @@ class CompareCanvasState extends State<CompareCanvas> {
 
     Widget layer(String? path, {required bool isResult}) {
       if (path == null) return const SizedBox.shrink();
-      return Positioned(
-        left: 0,
-        top: 0,
-        width: logical.width,
-        height: logical.height,
+      return Positioned.fill(
         child: Transform(
           transform: matrix,
-          child: SizedBox(
-            width: logical.width,
-            height: logical.height,
-            child: _ImageLayerView(
-              key: ValueKey('$path|$isResult'),
-              path: path,
-              logicalSize: logical,
-              // 结果图通常比原图大得多，允许更高的解码上限。
-              maxDecodeEdge: isResult ? 8192 : 6144,
-              viewportScale: currentScale,
+          alignment: Alignment.topLeft,
+          transformHitTests: false,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: logical.width,
+              height: logical.height,
+              child: _ImageLayerView(
+                key: ValueKey('$path|$isResult'),
+                path: path,
+                logicalSize: logical,
+                // 结果图通常比原图大得多，允许更高的解码上限。
+                maxDecodeEdge: isResult ? 8192 : 6144,
+                viewportScale: currentScale,
+              ),
             ),
           ),
         ),
