@@ -524,7 +524,7 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
 最近一轮聚焦的重构（不改变功能，仅修正正确性与消除重复，由 `flutter analyze` 零告警、
 `flutter test` 全绿验证）。
 
-**正确性修复**
+### **正确性修复**
 
 - **参数全字段比较**。`applyOptionsToPending` 原先只比较部分字段，导致改了子文件夹名或
   覆盖开关后不会同步给待处理任务。`UpscaleOptions` 新增 `sameAs`（见 `models.dart`）
@@ -535,7 +535,7 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
   `outputPath`，任务一完成立即刷新，不再慢一帧；顺带删除了死的 `_effectiveMode` 分支。
 - **GPU 探测竞态**。`detectGpus` 现在复用进行中的探测 Future，避免快速连点时发出重叠探测。
 
-**去重**
+### **去重**
 
 - `UpscaleJob.hasResult` 取代了三处几乎相同的 `_hasResult` 实现。
 - GPU 设备行解析只保留一个正则（`RuntimeManager.gpuDeviceLinePattern`），引擎与界面共用。
@@ -544,7 +544,7 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
 - 引擎目录选择通过 `FileDialogs.pickEngineDirectory` 共享；状态栏路径拼接改用
   `package:path` 的 `join`，不再手工拼字符串。
 
-**清理**
+### **清理**
 
 - 移除残留调试文件与未使用的 `AppPaths.windowStateFile`。
 - `SegmentedControl` 折叠时不再重复构建行。

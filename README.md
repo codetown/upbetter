@@ -545,7 +545,7 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
 A focused refactoring pass shipped in the current version round — no behavior change
 outside the list below, verified by a clean `flutter analyze` and a green `flutter test`.
 
-**Correctness fixes**
+### **Correctness fixes**
 
 - **Full-field option comparison.** `applyOptionsToPending` used to compare only a subset of
   fields, so changing the subfolder name or the overwrite flag didn't propagate to pending
@@ -560,7 +560,7 @@ outside the list below, verified by a clean `flutter analyze` and a green `flutt
 - **GPU probe races.** `detectGpus` now reuses an in-flight probe future instead of launching
   overlapping probes if the user clicks fast.
 
-**Deduplication**
+### **Deduplication**
 
 - `UpscaleJob.hasResult` replaces three near-identical `_hasResult` helpers.
 - GPU device-line parsing uses one regex (`RuntimeManager.gpuDeviceLinePattern`) shared by the
@@ -572,7 +572,7 @@ outside the list below, verified by a clean `flutter analyze` and a green `flutt
 - Engine-directory picking is shared via `FileDialogs.pickEngineDirectory`; status-bar path
   joining uses `package:path`'s `join` rather than hand-rolled concatenation.
 
-**Cleanup**
+### **Cleanup**
 
 - Removed leftover debug files and the unused `AppPaths.windowStateFile`.
 - `SegmentedControl` no longer builds duplicate rows when collapsed.
