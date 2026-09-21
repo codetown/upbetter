@@ -97,6 +97,9 @@ class RuntimeManager extends ChangeNotifier {
 
   CancelToken? _cancelToken;
 
+  /// 进行中的 GPU 探测，用于去重（见 [detectGpus]）。
+  Future<void>? _gpuProbe;
+
   final ValueNotifier<List<GpuDevice>> gpus = ValueNotifier(const []);
   final ValueNotifier<List<ModelSpec>> models = ValueNotifier(const []);
 
@@ -274,58 +277,72 @@ class RuntimeManager extends ChangeNotifier {
   /// PNG 配合最快的模型做一次极短的探测运行。
   Future<void> detectGpus() async {
     if (!isReady) return;
+    // 正在探测时直接复用同一个 Future，避免并发触发多份探测器互相踩踏。
+    if (_gpuProbe != null) return _gpuProbe!;
     final probe = File(p.join(AppPaths.cache.path, 'gpu_probe.png'));
-    try {
-      await probe.parent.create(recursive: true);
-      await probe.writeAsBytes(_onePixelPng, flush: true);
+    final task = Future.sync(() async {
+      try {
+        await probe.parent.create(recursive: true);
+        await probe.writeAsBytes(_onePixelPng, flush: true);
 
-      final result = await Process.run(
-        binaryPath,
-        [
-          '-i', probe.path,
-          '-o', '${probe.path}.out.png',
-          '-n', 'realesr-animevideov3',
-          '-s', '2',
-          '-m', modelsDir,
-          '-v',
-        ],
-        workingDirectory: AppPaths.runtime.path,
-        stdoutEncoding: null,
-        stderrEncoding: null,
-      );
+        final result = await Process.run(
+          binaryPath,
+          [
+            '-i', probe.path,
+            '-o', '${probe.path}.out.png',
+            '-n', 'realesr-animevideov3',
+            '-s', '2',
+            '-m', modelsDir,
+            '-v',
+          ],
+          workingDirectory: AppPaths.runtime.path,
+          stdoutEncoding: null,
+          stderrEncoding: null,
+        );
 
-      final detected = parseGpuDevices(
-        utf8.decode(result.stderr as List<int>, allowMalformed: true),
-      );
-      if (detected.isNotEmpty) {
-        gpus.value = detected;
-        Log.i('Runtime', '检测到 ${detected.length} 个 Vulkan 设备：'
-            '${detected.map((g) => '${g.index}:${g.name}').join(', ')}');
-      }
-    } on Object catch (error) {
-      Log.w('Runtime', 'GPU 探测失败：$error');
-    } finally {
-      for (final path in [probe.path, '${probe.path}.out.png']) {
-        final f = File(path);
-        if (f.existsSync()) {
-          try {
-            await f.delete();
-          } on Object {
-            // ignore
+        final detected = parseGpuDevices(
+          utf8.decode(result.stderr as List<int>, allowMalformed: true),
+        );
+        if (detected.isNotEmpty) {
+          gpus.value = detected;
+          Log.i('Runtime', '检测到 ${detected.length} 个 Vulkan 设备：'
+              '${detected.map((g) => '${g.index}:${g.name}').join(', ')}');
+        }
+      } on Object catch (error) {
+        Log.w('Runtime', 'GPU 探测失败：$error');
+      } finally {
+        for (final path in [probe.path, '${probe.path}.out.png']) {
+          final f = File(path);
+          if (f.existsSync()) {
+            try {
+              await f.delete();
+            } on Object {
+              // ignore
+            }
           }
         }
       }
+    });
+    _gpuProbe = task;
+    try {
+      return await task;
+    } finally {
+      _gpuProbe = null;
     }
   }
 
   /// 解析 ncnn 打印的设备行，例如：
   /// `[0 Intel(R) UHD Graphics]  queueC=0[1]  queueG=0[1]`
+  ///
+  /// [gpuDeviceLinePattern] 是同一格式的行级匹配，供推理引擎在消费
+  /// 子进程输出时提前识别设备行并转交这里统一解析，避免正则散落两处。
+  static final RegExp gpuDeviceLinePattern = RegExp(r'^\[(\d+)\s+(.+?)\]\s');
+
   static List<GpuDevice> parseGpuDevices(String stderrText) {
-    final pattern = RegExp(r'^\[(\d+)\s+(.+?)\]\s');
     final seen = <int>{};
     final result = <GpuDevice>[];
     for (final line in const LineSplitter().convert(stderrText)) {
-      final match = pattern.firstMatch(line.trim());
+      final match = gpuDeviceLinePattern.firstMatch(line.trim());
       if (match == null) continue;
       final index = int.tryParse(match.group(1)!);
       if (index == null || !seen.add(index)) continue;

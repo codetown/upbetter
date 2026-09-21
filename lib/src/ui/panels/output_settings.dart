@@ -37,9 +37,15 @@ class _OutputSettingsSectionState extends State<OutputSettingsSection> {
   void didUpdateWidget(OutputSettingsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     // 参数被外部重置时（例如切换预设）同步输入框内容。
+    // 条件是「和当前已输入内容不同，且确实来自外部变更」
+    // ——自己敲出来的改动会重新进入这里，但不该触发回写。
     if (widget.options.namingTemplate != _template.text &&
         widget.options.namingTemplate != oldWidget.options.namingTemplate) {
       _template.text = widget.options.namingTemplate;
+    }
+    if (widget.options.subfolderName != _subfolder.text &&
+        widget.options.subfolderName != oldWidget.options.subfolderName) {
+      _subfolder.text = widget.options.subfolderName;
     }
   }
 
@@ -259,22 +265,24 @@ class _RecentDirs extends StatelessWidget {
 ///
 /// 用固定的示例值渲染，让用户在输入模板时立刻看到最终文件名长什么样，
 /// 而不是保存后才发现写错了占位符。
+/// 渲染本身复用 [OutputResolver.renderTemplateString]，避免占位符替换
+/// 逻辑在这里再抄一遍。
 class OutputResolverHints {
   OutputResolverHints._();
 
   static String preview(String template, UpscaleOptions options) {
-    final result = template
-        .replaceAll('{name}', 'DSC_0421')
-        .replaceAll('{scale}', '${options.scale}x')
-        .replaceAll('{model}', options.modelId)
-        .replaceAll('{date}', '20260918')
-        .replaceAll('{time}', '143052')
-        .replaceAll('{w}', '1600')
-        .replaceAll('{h}', '1200');
-    final safe = result.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
+    final stem = OutputResolver.renderTemplateString(
+      template,
+      baseName: 'DSC_0421',
+      scale: options.scale,
+      modelId: options.modelId,
+      outputWidth: 1600,
+      outputHeight: 1200,
+      now: DateTime(2026, 9, 18, 14, 30, 52),
+    );
     final extension = options.format == OutputFormat.original
         ? 'png'
         : options.format.flag;
-    return '${safe.isEmpty ? 'DSC_0421_upbetter' : safe}.$extension';
+    return '$stem.$extension';
   }
 }

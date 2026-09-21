@@ -57,7 +57,6 @@ class AppPaths {
   static Directory get output => _output;
 
   static File get settingsFile => File(p.join(_support.path, 'settings.json'));
-  static File get windowStateFile => File(p.join(_support.path, 'window.json'));
   static File get logFile => File(p.join(_logs.path, 'upbetter.log'));
 
   /// 数据目录名。刻意写死而不是交给 `path_provider` 推导。

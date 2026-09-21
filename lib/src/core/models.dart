@@ -248,6 +248,25 @@ class UpscaleOptions {
   /// 从而只加载一次模型权重——这是批量处理最主要的性能优化。
   String get executionKey => '$modelId|$scale|${format.flag}|$tileSize|$gpuId|$tta';
 
+  /// 与另一份参数是否**逐字段相等**。
+  ///
+  /// 用于「全局参数同步」时判断待处理任务是否真的需要更新。
+  /// 不要用 `==`：这个类是设计为便宜的值对象，但它没有覆写相等性，
+  /// 逐字段比较才是这里想要的语义。
+  bool sameAs(UpscaleOptions other) {
+    return modelId == other.modelId &&
+        scale == other.scale &&
+        format == other.format &&
+        location == other.location &&
+        outputDir == other.outputDir &&
+        subfolderName == other.subfolderName &&
+        namingTemplate == other.namingTemplate &&
+        tileSize == other.tileSize &&
+        gpuId == other.gpuId &&
+        tta == other.tta &&
+        overwrite == other.overwrite;
+  }
+
   Map<String, Object?> toJson() => {
         'modelId': modelId,
         'scale': scale,
@@ -349,6 +368,17 @@ class UpscaleJob {
   int get outputHeight => sourceInfo.height * options.scale;
 
   int get outputPixels => outputWidth * outputHeight;
+
+  /// 是否已产出一个真实存在于磁盘上的结果文件。
+  ///
+  /// 任务达成 `done` 状态但输出被用户手动删除时同样返回 `false`，
+  /// 界面据此回退到只展示原图，而不是显示一个悬空的结果路径。
+  bool get hasResult {
+    final path = outputPath.value;
+    return status.value == JobStatus.done &&
+        path != null &&
+        File(path).existsSync();
+  }
 
   void dispose() {
     status.dispose();

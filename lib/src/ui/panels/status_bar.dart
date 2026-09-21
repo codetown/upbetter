@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/models.dart';
 import '../../core/util/format.dart';
@@ -81,7 +82,7 @@ class StatusBar extends StatelessWidget {
                   final dir = switch (scope.settings.options.location) {
                     OutputLocation.custom when custom != null => custom,
                     OutputLocation.subfolder when job != null =>
-                      '${job.inputDir}\\${scope.settings.options.subfolderName}',
+                      p.join(job.inputDir, scope.settings.options.subfolderName),
                     _ when job != null => job.inputDir,
                     _ => null,
                   };

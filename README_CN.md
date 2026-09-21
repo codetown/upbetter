@@ -29,6 +29,7 @@
 - [命令行用法](#命令行用法)
 - [目录结构](#目录结构)
 - [测试](#测试)
+- [近期优化](#近期优化)
 - [常见问题](#常见问题)
 - [已知限制](#已知限制)
 - [参与贡献](#参与贡献)
@@ -414,7 +415,8 @@ lib/
     │   │   ├── upscale_engine.dart  调度核心：批次分组、进程驱动、进度插值、取消
     │   │   └── output_path.dart     命名模板与输出路径解析
     │   ├── image/
-    │   │   └── image_probe.dart     只读文件头的图像尺寸探测
+    │   │   ├── image_probe.dart     只读文件头的图像尺寸探测
+    │   │   └── image_decode.dart    按最长边上限解码（预览用）
     │   ├── runtime/
     │   │   ├── runtime_manager.dart 引擎安装、模型发现、GPU 枚举
     │   │   └── downloader.dart      断点续传下载 + SHA-256 校验
@@ -511,9 +513,43 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
 | 文件 | 覆盖内容 |
 | --- | --- |
 | `widget_test.dart` | 图像头解析（PNG/JPEG）、GPU 设备行解析、命名模板、格式化、参数序列化 |
-| `engine_queue_test.dart` | 入队去重、拖拽排序、取消语义、参数同步、清理、耗时预估 |
+| `engine_queue_test.dart` | 入队去重、拖拽排序、取消语义、参数全字段同步、重试重新入队、结果判定（`hasResult`）、清理、耗时预估 |
 | `engine_integration_test.dart` | **真实调用推理引擎**：单图产物尺寸、批次合并（3 文件 → 1 次进程）、处理顺序、取消、暂存目录清理 |
 | `runtime_install_test.dart` | 发行包解压筛选规则、引擎发现、模型完整性、SHA-256、真实下载安装 |
+
+---
+
+## 近期优化
+
+最近一轮聚焦的重构（不改变功能，仅修正正确性与消除重复，由 `flutter analyze` 零告警、
+`flutter test` 全绿验证）。
+
+**正确性修复**
+
+- **参数全字段比较**。`applyOptionsToPending` 原先只比较部分字段，导致改了子文件夹名或
+  覆盖开关后不会同步给待处理任务。`UpscaleOptions` 新增 `sameAs`（见 `models.dart`）
+  逐字段比较，输出设置面板改用它。
+- **输出设置同步**。子文件夹输入框在设置被外部重置时保持同步；命名预览复用真实解析
+  `OutputResolver.renderTemplateString`，所见即所得。
+- **预览工具栏迟滞**。工具栏改为经由合并的 `ListenableBuilder` 订阅任务 `status` 与
+  `outputPath`，任务一完成立即刷新，不再慢一帧；顺带删除了死的 `_effectiveMode` 分支。
+- **GPU 探测竞态**。`detectGpus` 现在复用进行中的探测 Future，避免快速连点时发出重叠探测。
+
+**去重**
+
+- `UpscaleJob.hasResult` 取代了三处几乎相同的 `_hasResult` 实现。
+- GPU 设备行解析只保留一个正则（`RuntimeManager.gpuDeviceLinePattern`），引擎与界面共用。
+- `decodeImageCapped` 收拢到 `core/image/image_decode.dart`，对比画布共用同一份实现。
+- 失败重试移到引擎侧（`retryJob`），队列面板不再自行实现。
+- 引擎目录选择通过 `FileDialogs.pickEngineDirectory` 共享；状态栏路径拼接改用
+  `package:path` 的 `join`，不再手工拼字符串。
+
+**清理**
+
+- 移除残留调试文件与未使用的 `AppPaths.windowStateFile`。
+- `SegmentedControl` 折叠时不再重复构建行。
+- `engine_queue_test.dart` 新增六条回归测试：覆盖参数等价、子文件夹/覆盖传播、
+  `hasResult` 与重试语义。
 
 ---
 

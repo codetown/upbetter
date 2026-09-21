@@ -30,6 +30,7 @@ after the one-time engine install, everything works fully offline.
 - [Command Line](#command-line)
 - [Project Layout](#project-layout)
 - [Testing](#testing)
+- [Recent Optimizations](#recent-optimizations)
 - [FAQ](#faq)
 - [Known Limitations](#known-limitations)
 - [Contributing](#contributing)
@@ -435,7 +436,8 @@ lib/
     │   │   ├── upscale_engine.dart  Scheduler: batching, process driving, progress, cancel
     │   │   └── output_path.dart     Naming templates and output path resolution
     │   ├── image/
-    │   │   └── image_probe.dart     Dimension probing from file headers only
+    │   │   ├── image_probe.dart     Dimension probing from file headers only
+    │   │   └── image_decode.dart    Capped decode (max long edge) for previews
     │   ├── runtime/
     │   │   ├── runtime_manager.dart Engine install, model discovery, GPU enumeration
     │   │   └── downloader.dart      Resumable download + SHA-256 verification
@@ -532,9 +534,50 @@ UPBETTER_NETWORK_TESTS=1 flutter test test/runtime_install_test.dart
 | File | Coverage |
 | --- | --- |
 | `widget_test.dart` | Image header parsing (PNG/JPEG), GPU device line parsing, naming templates, formatting, options serialization |
-| `engine_queue_test.dart` | Enqueue dedup, drag reordering, cancel semantics, option propagation, cleanup, time estimation |
+| `engine_queue_test.dart` | Enqueue dedup, drag reordering, cancel semantics, option propagation (full-field), retry re-queue, result detection (`hasResult`), cleanup, time estimation |
 | `engine_integration_test.dart` | **Really invokes the engine**: output dimensions, batch merging (3 files → 1 process), processing order, cancellation, staging cleanup |
 | `runtime_install_test.dart` | Archive extraction filtering, engine discovery, model integrity, SHA-256, real download & install |
+
+---
+
+## Recent Optimizations
+
+A focused refactoring pass shipped in the current version round — no behavior change
+outside the list below, verified by a clean `flutter analyze` and a green `flutter test`.
+
+**Correctness fixes**
+
+- **Full-field option comparison.** `applyOptionsToPending` used to compare only a subset of
+  fields, so changing the subfolder name or the overwrite flag didn't propagate to pending
+  jobs. `UpscaleOptions` now has `sameAs` (see `models.dart`) that compares **every** field,
+  and the output settings panel uses it.
+- **Output-settings sync.** The subfolder text field now stays in sync when the setting is
+  reset externally; the naming preview reuses the same `OutputResolver.renderTemplateString`
+  the real resolver uses.
+- **Preview toolbar staleness.** The toolbar now subscribes to the job's `status` and
+  `outputPath` via a merged `ListenableBuilder`, so it reflects completion the instant a job
+  finishes instead of one frame late. A dead `_effectiveMode` branch was removed.
+- **GPU probe races.** `detectGpus` now reuses an in-flight probe future instead of launching
+  overlapping probes if the user clicks fast.
+
+**Deduplication**
+
+- `UpscaleJob.hasResult` replaces three near-identical `_hasResult` helpers.
+- GPU device-line parsing uses one regex (`RuntimeManager.gpuDeviceLinePattern`) shared by the
+  engine and the UI instead of two copies.
+- `decodeImageCapped` moved into `core/image/image_decode.dart` and is shared by the compare
+  canvas instead of being duplicated.
+- Failed-job retry now lives on the engine (`retryJob`); the queue panel doesn't re-implement
+  it.
+- Engine-directory picking is shared via `FileDialogs.pickEngineDirectory`; status-bar path
+  joining uses `package:path`'s `join` rather than hand-rolled concatenation.
+
+**Cleanup**
+
+- Removed leftover debug files and the unused `AppPaths.windowStateFile`.
+- `SegmentedControl` no longer builds duplicate rows when collapsed.
+- Added six regression tests in `engine_queue_test.dart` covering option equivalence,
+  subfolder/overwrite propagation, `hasResult`, and retry semantics.
 
 ---
 

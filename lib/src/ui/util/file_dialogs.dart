@@ -1,9 +1,13 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/app_paths.dart';
 import '../../core/image/image_probe.dart';
+import '../../core/runtime/runtime_manager.dart';
+import '../../core/util/log.dart';
 
 /// 系统文件对话框的薄封装，统一在这里处理过滤条件与类型收窄。
 class FileDialogs {
@@ -27,6 +31,36 @@ class FileDialogs {
     const group = XTypeGroup(label: '可执行文件', extensions: ['exe']);
     final file = await openFile(acceptedTypeGroups: const [group]);
     return file?.path;
+  }
+
+  /// 让用户指定一个已安装的引擎目录。
+  ///
+  /// 校验目录内存在 `realesrgan-ncnn-vulkan.exe`，通过后写入
+  /// [AppPaths.portableRuntimeOverride] 并刷新 [RuntimeManager]。
+  /// 失败时通过 SnackBar 提示并返回 `false`。
+  /// 安装页的两个入口（全新安装 / 安装出错）共用这一段逻辑。
+  static Future<bool> pickEngineDirectory(
+    BuildContext context,
+    RuntimeManager runtime,
+  ) async {
+    final dir = await pickDirectory(confirmButtonText: '使用此目录');
+    if (dir == null) return false;
+
+    if (!File(p.join(dir, 'realesrgan-ncnn-vulkan.exe')).existsSync()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('该目录下没有找到 realesrgan-ncnn-vulkan.exe'),
+          ),
+        );
+      }
+      return false;
+    }
+
+    AppPaths.portableRuntimeOverride = dir;
+    Log.i('Install', '使用用户指定的引擎目录：$dir');
+    await runtime.refresh();
+    return true;
   }
 
   /// 递归收集目录下所有受支持的图像文件。

@@ -1,13 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:path/path.dart' as p;
 
-import '../../core/app_paths.dart';
 import '../../core/runtime/runtime_manager.dart';
 import '../../core/util/format.dart';
-import '../../core/util/log.dart';
 import '../app.dart';
 import '../shell/title_bar.dart';
 import '../theme/tokens.dart';
@@ -152,22 +147,8 @@ class _ReadyToInstallBody extends StatelessWidget {
   final RuntimeManager runtime;
 
   Future<void> _useExisting(BuildContext context) async {
-    final dir = await FileDialogs.pickDirectory(confirmButtonText: '使用此目录');
-    if (dir == null) return;
-
-    final exe = File(p.join(dir, 'realesrgan-ncnn-vulkan.exe'));
-    if (!exe.existsSync()) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('该目录下没有找到 realesrgan-ncnn-vulkan.exe')),
-      );
-      return;
-    }
-
-    AppPaths.portableRuntimeOverride = dir;
-    Log.i('Install', '使用用户指定的引擎目录：$dir');
-    await runtime.refresh();
-    if (runtime.models.value.isEmpty && context.mounted) {
+    final used = await FileDialogs.pickEngineDirectory(context, runtime);
+    if (used && runtime.models.value.isEmpty && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('引擎已就位，但未找到模型权重，请确认目录下存在 models 文件夹')),
       );
@@ -412,16 +393,7 @@ class _ErrorBodyState extends State<_ErrorBody> {
   }
 
   Future<void> _useExisting() async {
-    final dir = await FileDialogs.pickDirectory(confirmButtonText: '使用此目录');
-    if (dir == null || !mounted) return;
-    if (!File(p.join(dir, 'realesrgan-ncnn-vulkan.exe')).existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('该目录下没有找到 realesrgan-ncnn-vulkan.exe')),
-      );
-      return;
-    }
-    AppPaths.portableRuntimeOverride = dir;
-    await widget.runtime.refresh();
+    await FileDialogs.pickEngineDirectory(context, widget.runtime);
   }
 
   @override

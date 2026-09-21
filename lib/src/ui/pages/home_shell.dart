@@ -244,8 +244,6 @@ class _HomeShellState extends State<HomeShell> {
                   right: 0,
                   child: Center(child: _ImportBanner()),
                 ),
-              // 让引擎的状态变化驱动状态栏刷新。
-              const SizedBox.shrink(),
             ],
           ),
         ),

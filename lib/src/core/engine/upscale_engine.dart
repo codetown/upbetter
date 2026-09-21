@@ -163,12 +163,9 @@ class UpscaleEngine extends ChangeNotifier {
     var changed = 0;
     for (final job in _jobs) {
       if (job.status.value != JobStatus.queued) continue;
-      if (job.options.executionKey == options.executionKey &&
-          job.options.location == options.location &&
-          job.options.outputDir == options.outputDir &&
-          job.options.namingTemplate == options.namingTemplate) {
-        continue;
-      }
+      // 逐字段比较，而不是只比 executionKey：executionKey 只覆盖影响推理
+      // 进程的参数，输出侧的子文件夹名、覆盖策略等如果变了，也必须同步下去。
+      if (job.options.sameAs(options)) continue;
       job.options = options;
       changed++;
     }
@@ -228,11 +225,7 @@ class UpscaleEngine extends ChangeNotifier {
     for (final job in _jobs) {
       final status = job.status.value;
       if (status == JobStatus.failed || status == JobStatus.canceled) {
-        job.status.value = JobStatus.queued;
-        job.progress.value = 0;
-        job.errorMessage.value = null;
-        job.outputPath.value = null;
-        count++;
+        if (_requeue(job)) count++;
       }
     }
     if (count > 0) {
@@ -240,6 +233,29 @@ class UpscaleEngine extends ChangeNotifier {
       _recomputeOverall();
       notifyListeners();
     }
+  }
+
+  /// 重试单个失败/已取消的任务。
+  ///
+  /// 右侧菜单的「重新排队」走这里而不是直接改 [UpscaleJob] 的字段，
+  /// 保证清理、进度归位与整体进度重算都走同一套逻辑。
+  bool retryJob(UpscaleJob job) {
+    if (_requeue(job)) {
+      _recomputeOverall();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  bool _requeue(UpscaleJob job) {
+    final status = job.status.value;
+    if (status != JobStatus.failed && status != JobStatus.canceled) return false;
+    job.status.value = JobStatus.queued;
+    job.progress.value = 0;
+    job.errorMessage.value = null;
+    job.outputPath.value = null;
+    return true;
   }
 
   // ── 运行控制 ────────────────────────────────────────────────────────────
@@ -648,7 +664,6 @@ class UpscaleEngine extends ChangeNotifier {
   /// * `[0 Intel(R) UHD Graphics] ...`   —— Vulkan 设备枚举
   /// * `in.png -> out.png done`          —— 单个文件完成
   static final _percentPattern = RegExp(r'^\s*(\d+(?:\.\d+)?)%\s*$');
-  static final _devicePattern = RegExp(r'^\[(\d+)\s+(.+?)\]\s');
   static final _donePattern = RegExp(r'[\\/](\d+)\.[A-Za-z0-9]+\s+->\s+.+?\s+done');
 
   /// 记录推理进程输出的非进度行。这些通常是错误信息，
@@ -669,7 +684,7 @@ class UpscaleEngine extends ChangeNotifier {
       return;
     }
 
-    if (_devicePattern.hasMatch(trimmed)) {
+    if (RuntimeManager.gpuDeviceLinePattern.hasMatch(trimmed)) {
       _ingestDeviceLine(trimmed);
       return;
     }
@@ -700,7 +715,7 @@ class UpscaleEngine extends ChangeNotifier {
       return;
     }
 
-    if (_devicePattern.hasMatch(trimmed)) {
+    if (RuntimeManager.gpuDeviceLinePattern.hasMatch(trimmed)) {
       _ingestDeviceLine(trimmed);
       return;
     }

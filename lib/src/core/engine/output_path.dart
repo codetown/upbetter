@@ -20,19 +20,42 @@ class OutputResolver {
   };
 
   static String renderTemplate(String template, UpscaleJob job, DateTime now) {
-    final base = p.basenameWithoutExtension(job.inputName);
-    final modelId = job.options.modelId;
+    return renderTemplateString(
+      template,
+      baseName: p.basenameWithoutExtension(job.inputName),
+      scale: job.options.scale,
+      modelId: job.options.modelId,
+      outputWidth: job.outputWidth,
+      outputHeight: job.outputHeight,
+      now: now,
+    );
+  }
+
+  /// 用一组显式的变量值渲染模板名，返回安全的文件主名（不含扩展名）。
+  ///
+  /// [renderTemplate] 与界面上的「命名预览」都走这里，保证占位符替换、
+  /// 非法字符清洗与空名兜底只有一份实现。
+  static String renderTemplateString(
+    String template, {
+    required String baseName,
+    required int scale,
+    required String modelId,
+    required int outputWidth,
+    required int outputHeight,
+    DateTime? now,
+  }) {
+    final nowValue = now ?? DateTime.now();
     final result = template
-        .replaceAll('{name}', base)
-        .replaceAll('{scale}', '${job.options.scale}x')
+        .replaceAll('{name}', baseName)
+        .replaceAll('{scale}', '${scale}x')
         .replaceAll('{model}', modelId)
-        .replaceAll('{date}', _date(now))
-        .replaceAll('{time}', _time(now))
-        .replaceAll('{w}', '${job.outputWidth}')
-        .replaceAll('{h}', '${job.outputHeight}');
+        .replaceAll('{date}', _date(nowValue))
+        .replaceAll('{time}', _time(nowValue))
+        .replaceAll('{w}', '$outputWidth')
+        .replaceAll('{h}', '$outputHeight');
 
     final sanitized = _sanitize(result);
-    return sanitized.isEmpty ? '${base}_upbetter' : sanitized;
+    return sanitized.isEmpty ? '${baseName}_upbetter' : sanitized;
   }
 
   /// 计算某个任务的最终输出文件路径。

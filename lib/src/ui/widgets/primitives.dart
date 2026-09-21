@@ -191,13 +191,15 @@ class SegmentedControl<T> extends StatelessWidget {
     final safeIndex = index < 0 ? 0 : index;
 
     final row = Row(
+      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       children: [
         for (var i = 0; i < segments.length; i++)
-          expand
-              ? Expanded(
-                  child: _buildItem(context, t, segments[i], i == safeIndex),
-                )
-              : _buildItem(context, t, segments[i], i == safeIndex),
+          if (expand)
+            Expanded(
+              child: _buildItem(context, t, segments[i], i == safeIndex),
+            )
+          else
+            _buildItem(context, t, segments[i], i == safeIndex),
       ],
     );
 
@@ -208,15 +210,7 @@ class SegmentedControl<T> extends StatelessWidget {
         borderRadius: Radii.allMd,
         border: Border.all(color: t.border),
       ),
-      child: expand
-          ? row
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < segments.length; i++)
-                  _buildItem(context, t, segments[i], i == safeIndex),
-              ],
-            ),
+      child: row,
     );
   }
 

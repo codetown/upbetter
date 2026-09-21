@@ -409,6 +409,8 @@ class _JobRowState extends State<_JobRow> {
   Future<void> _showContextMenu(BuildContext context, Offset position) async {
     final job = widget.job;
     final output = job.outputPath.value;
+    // 在 await 之前取引擎引用：菜单弹出期间对话框关闭后 context 不可再用。
+    final engine = AppScope.of(context).engine;
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
@@ -451,15 +453,14 @@ class _JobRowState extends State<_JobRow> {
       case 'reveal':
         await SystemShell.revealFile(job.inputPath);
       case 'reveal_out':
-        if (output != null && File(output).existsSync()) {
-          await SystemShell.revealFile(output);
+        if (job.hasResult) {
+          await SystemShell.revealFile(job.outputPath.value!);
         }
       case 'cancel':
         widget.onCancel();
       case 'retry':
-        job.status.value = JobStatus.queued;
-        job.progress.value = 0;
-        job.errorMessage.value = null;
+        // 走统一入口而不是直接改字段：保证清理与整体进度重算一致。
+        engine.retryJob(job);
       case 'remove':
         widget.onRemove();
     }
@@ -521,11 +522,8 @@ class _Thumbnail extends StatelessWidget {
     return ValueListenableBuilder<String?>(
       valueListenable: job.outputPath,
       builder: (context, outputPath, _) {
-        final hasResult =
-            job.status.value == JobStatus.done &&
-            outputPath != null &&
-            File(outputPath).existsSync();
-        final path = hasResult ? outputPath : job.inputPath;
+        final hasResult = job.hasResult;
+        final path = outputPath ?? job.inputPath;
 
         return Padding(
           padding: const EdgeInsets.only(left: Gap.sm),

@@ -172,6 +172,65 @@ void main() {
 
       expect(notifications, 0);
     });
+
+    test('修改子文件夹名会同步到排队中的任务', () {
+      final queued = addJob('a.png');
+      engine.applyOptionsToPending(
+        const UpscaleOptions(subfolderName: 'hi-res'),
+      );
+      expect(queued.options.subfolderName, 'hi-res');
+    });
+
+    test('切换覆盖策略会同步到排队中的任务', () {
+      final queued = addJob('a.png');
+      engine.applyOptionsToPending(const UpscaleOptions(overwrite: true));
+      expect(queued.options.overwrite, isTrue);
+    });
+  });
+
+  group('选项比较', () {
+    test('sameAs 逐字段比较全部参数', () {
+      const base = UpscaleOptions();
+      expect(base.sameAs(base), isTrue);
+      expect(base.sameAs(const UpscaleOptions()), isTrue);
+      expect(base.sameAs(const UpscaleOptions(subfolderName: 'x')), isFalse);
+      expect(base.sameAs(const UpscaleOptions(overwrite: true)), isFalse);
+      expect(base.sameAs(const UpscaleOptions(namingTemplate: '{name}')), isFalse);
+      expect(base.sameAs(const UpscaleOptions(gpuId: 0)), isFalse);
+    });
+  });
+
+  group('结果判定', () {
+    test('hasResult 只在结果文件真实存在时为真', () {
+      final job = addJob('a.png');
+      expect(job.hasResult, isFalse);
+
+      final out = File(p.join(root.path, 'a.out.png'));
+      out.writeAsStringSync('x');
+      job.status.value = JobStatus.done;
+      job.outputPath.value = out.path;
+      expect(job.hasResult, isTrue);
+
+      out.deleteSync();
+      expect(job.hasResult, isFalse, reason: '文件被删除后应视为没有结果');
+    });
+
+    test('retryJob 送入失败任务并清空输出', () {
+      final job = addJob('a.png');
+      job.status.value = JobStatus.failed;
+      job.outputPath.value = p.join(root.path, 'a.out.png');
+
+      expect(engine.retryJob(job), isTrue);
+      expect(job.status.value, JobStatus.queued);
+      expect(job.outputPath.value, isNull);
+      expect(engine.hasWork, isTrue);
+    });
+
+    test('retryJob 对正常任务无效', () {
+      final job = addJob('a.png');
+      expect(engine.retryJob(job), isFalse);
+      expect(job.status.value, JobStatus.queued);
+    });
   });
 
   group('清理', () {

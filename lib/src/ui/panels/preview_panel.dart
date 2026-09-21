@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -112,17 +110,8 @@ class _PreviewPanelState extends State<PreviewPanel> {
   }
 
   ViewMode _effectiveMode(UpscaleJob job) {
-    final hasResult = _hasResult(job);
-    if (!hasResult) return ViewMode.original;
-    if (_mode == ViewMode.result && !hasResult) return ViewMode.original;
+    if (!job.hasResult) return ViewMode.original;
     return _mode;
-  }
-
-  static bool _hasResult(UpscaleJob job) {
-    final path = job.outputPath.value;
-    return job.status.value == JobStatus.done &&
-        path != null &&
-        File(path).existsSync();
   }
 
   void _setMode(ViewMode mode) {
@@ -223,10 +212,7 @@ class _CanvasHostState extends State<_CanvasHost> {
       builder: (context, _, _) => ValueListenableBuilder<String?>(
         valueListenable: job.outputPath,
         builder: (context, outputPath, _) {
-          final hasResult =
-              job.status.value == JobStatus.done &&
-              outputPath != null &&
-              File(outputPath).existsSync();
+          final hasResult = job.hasResult;
 
           final source = Size(
             job.sourceInfo.width.toDouble(),
@@ -279,100 +265,107 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTokens.of(context);
     final text = Theme.of(context).textTheme;
-    final hasResult = _PreviewPanelState._hasResult(job);
+    // 任务完成/失败/取消都会改变下面这些控件，直接订阅任务本体，
+    // 避免完成瞬间工具栏还停留在「处理中」的旧状态。
+    return ListenableBuilder(
+      listenable: Listenable.merge([job.status, job.outputPath]),
+      builder: (context, _) {
+        final hasResult = job.hasResult;
 
-    final sourceSize = Size(
-      job.sourceInfo.width.toDouble(),
-      job.sourceInfo.height.toDouble(),
-    );
-    final resultSize = Size(
-      job.outputWidth.toDouble(),
-      job.outputHeight.toDouble(),
-    );
-    final shownSize = mode == ViewMode.original && !hasResult
-        ? sourceSize
-        : resultSize;
+        final sourceSize = Size(
+          job.sourceInfo.width.toDouble(),
+          job.sourceInfo.height.toDouble(),
+        );
+        final resultSize = Size(
+          job.outputWidth.toDouble(),
+          job.outputHeight.toDouble(),
+        );
+        final shownSize = mode == ViewMode.original && !hasResult
+            ? sourceSize
+            : resultSize;
 
-    return GlassSurface(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-      border: Border(bottom: BorderSide(color: t.border)),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    job.inputName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleSmall,
-                  ),
+        return GlassSurface(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+          border: Border(bottom: BorderSide(color: t.border)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        job.inputName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleSmall,
+                      ),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                    Text(
+                      Fmt.dimensions(
+                        shownSize.width.toInt(),
+                        shownSize.height.toInt(),
+                      ),
+                      style: text.labelSmall?.copyWith(
+                        color: t.textTertiary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (hasResult) ...[
+                      const SizedBox(width: Gap.sm),
+                      StatusBadge(
+                        label: Fmt.scale(job.options.scale.toDouble()),
+                        color: t.accent,
+                        dense: true,
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: Gap.sm),
-                Text(
-                  Fmt.dimensions(
-                    shownSize.width.toInt(),
-                    shownSize.height.toInt(),
-                  ),
-                  style: text.labelSmall?.copyWith(
-                    color: t.textTertiary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+              ),
+              if (hasResult)
+                SegmentedControl<ViewMode>(
+                  expand: false,
+                  value: mode,
+                  onChanged: onModeChanged,
+                  segments: const [
+                    Segment(ViewMode.split, '对比'),
+                    Segment(ViewMode.original, '原图'),
+                    Segment(ViewMode.result, '结果'),
+                  ],
+                )
+              else
+                StatusBadge(
+                  label: job.status.value == JobStatus.running ? '处理中' : '尚未放大',
+                  color: job.status.value == JobStatus.running
+                      ? t.accent
+                      : t.textTertiary,
                 ),
-                if (hasResult) ...[
-                  const SizedBox(width: Gap.sm),
-                  StatusBadge(
-                    label: Fmt.scale(job.options.scale.toDouble()),
-                    color: t.accent,
-                    dense: true,
-                  ),
-                ],
+              const SizedBox(width: Gap.md),
+              IconBtn(icon: Symbols.zoom_out, tooltip: '缩小', onPressed: onZoomOut),
+              IconBtn(icon: Symbols.zoom_in, tooltip: '放大', onPressed: onZoomIn),
+              IconBtn(
+                icon: Symbols.fit_screen,
+                tooltip: '适应窗口  (双击画布)',
+                onPressed: onFit,
+              ),
+              IconBtn(
+                icon: Symbols.crop_free,
+                tooltip: '实际像素 1:1',
+                onPressed: onActualSize,
+              ),
+              if (hasResult) ...[
+                const SizedBox(width: Gap.xs),
+                IconBtn(
+                  icon: Symbols.folder_open,
+                  tooltip: '在资源管理器中显示结果',
+                  onPressed: () => SystemShell.revealFile(job.outputPath.value!),
+                ),
               ],
-            ),
+            ],
           ),
-          if (hasResult)
-            SegmentedControl<ViewMode>(
-              expand: false,
-              value: mode,
-              onChanged: onModeChanged,
-              segments: const [
-                Segment(ViewMode.split, '对比'),
-                Segment(ViewMode.original, '原图'),
-                Segment(ViewMode.result, '结果'),
-              ],
-            )
-          else
-            StatusBadge(
-              label: job.status.value == JobStatus.running ? '处理中' : '尚未放大',
-              color: job.status.value == JobStatus.running
-                  ? t.accent
-                  : t.textTertiary,
-            ),
-          const SizedBox(width: Gap.md),
-          IconBtn(icon: Symbols.zoom_out, tooltip: '缩小', onPressed: onZoomOut),
-          IconBtn(icon: Symbols.zoom_in, tooltip: '放大', onPressed: onZoomIn),
-          IconBtn(
-            icon: Symbols.fit_screen,
-            tooltip: '适应窗口  (双击画布)',
-            onPressed: onFit,
-          ),
-          IconBtn(
-            icon: Symbols.crop_free,
-            tooltip: '实际像素 1:1',
-            onPressed: onActualSize,
-          ),
-          if (hasResult) ...[
-            const SizedBox(width: Gap.xs),
-            IconBtn(
-              icon: Symbols.folder_open,
-              tooltip: '在资源管理器中显示结果',
-              onPressed: () => SystemShell.revealFile(job.outputPath.value!),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }
