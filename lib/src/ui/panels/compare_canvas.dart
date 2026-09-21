@@ -68,9 +68,10 @@ class CompareCanvasState extends State<CompareCanvas> {
   ///
   /// 画布的变换始终是纯缩放 + 纯平移（没有旋转/斜切），
   /// 因此用一个二维参数化就能完整表达，也让边界约束变得简单可靠。
-  static Matrix4 _compose(double dx, double dy, double scale) => Matrix4.identity()
-    ..translateByDouble(dx, dy, 0, 1)
-    ..scaleByDouble(scale, scale, 1, 1);
+  static Matrix4 _compose(double dx, double dy, double scale) =>
+      Matrix4.identity()
+        ..translateByDouble(dx, dy, 0, 1)
+        ..scaleByDouble(scale, scale, 1, 1);
 
   void fitToViewport(Size viewport) {
     if (viewport.isEmpty || widget.logicalSize.isEmpty) return;
@@ -183,7 +184,9 @@ class CompareCanvasState extends State<CompareCanvas> {
               setState(() {});
             },
             child: MouseRegion(
-              cursor: _panning ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+              cursor: _panning
+                  ? SystemMouseCursors.grabbing
+                  : SystemMouseCursors.grab,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -255,14 +258,14 @@ class CompareCanvasState extends State<CompareCanvas> {
 
     if (!showSplit) {
       return Stack(
-        clipBehavior: Clip.none,
+        clipBehavior: Clip.hardEdge,
         children: [before, if (widget.mode == ViewMode.result) after],
       );
     }
 
     // 对比模式：结果图层被裁剪到分割线左侧，分割线随窗口宽度固定。
     return Stack(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       children: [
         before,
         Positioned.fill(
@@ -283,10 +286,12 @@ class _LeftFractionClipper extends CustomClipper<Rect> {
   final double fraction;
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fraction, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * fraction, size.height);
 
   @override
-  bool shouldReclip(_LeftFractionClipper oldClipper) => oldClipper.fraction != fraction;
+  bool shouldReclip(_LeftFractionClipper oldClipper) =>
+      oldClipper.fraction != fraction;
 }
 
 class _ViewportBackground extends CustomPainter {
@@ -307,7 +312,8 @@ class _ViewportBackground extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ViewportBackground oldDelegate) => oldDelegate.tokens != tokens;
+  bool shouldRepaint(_ViewportBackground oldDelegate) =>
+      oldDelegate.tokens != tokens;
 }
 
 /// 单个图像图层：负责分级解码与绘制。
@@ -407,7 +413,11 @@ class _ImageLayerViewState extends State<_ImageLayerView> {
     final image = _detail ?? _preview;
 
     return CustomPaint(
-      painter: CheckerboardPainter(light: t.checkerLight, dark: t.checkerDark, cellSize: 12),
+      painter: CheckerboardPainter(
+        light: t.checkerLight,
+        dark: t.checkerDark,
+        cellSize: 12,
+      ),
       child: image == null
           ? const SizedBox.expand()
           : RawImage(
@@ -416,7 +426,9 @@ class _ImageLayerViewState extends State<_ImageLayerView> {
               height: widget.logicalSize.height,
               fit: BoxFit.fill,
               // 预览阶段用低采样过滤，切到高分辨率后再用高质量过滤。
-              filterQuality: _detail != null ? FilterQuality.medium : FilterQuality.low,
+              filterQuality: _detail != null
+                  ? FilterQuality.medium
+                  : FilterQuality.low,
             ),
     );
   }
@@ -525,7 +537,11 @@ class _SplitHandlePainter extends CustomPainter {
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = dragging ? 2.4 : 1.6;
-    canvas.drawLine(Offset(centerX, 0), Offset(centerX, size.height), linePaint);
+    canvas.drawLine(
+      Offset(centerX, 0),
+      Offset(centerX, size.height),
+      linePaint,
+    );
 
     final knobRadius = dragging ? 15.0 : 13.0;
     final knobCenter = Offset(centerX, size.height / 2);
@@ -551,10 +567,26 @@ class _SplitHandlePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     const dx = 4.5;
     const dy = 3.6;
-    canvas.drawLine(knobCenter.translate(-dx, 0), knobCenter.translate(-dx + 2.6, -dy), arrowPaint);
-    canvas.drawLine(knobCenter.translate(-dx, 0), knobCenter.translate(-dx + 2.6, dy), arrowPaint);
-    canvas.drawLine(knobCenter.translate(dx, 0), knobCenter.translate(dx - 2.6, -dy), arrowPaint);
-    canvas.drawLine(knobCenter.translate(dx, 0), knobCenter.translate(dx - 2.6, dy), arrowPaint);
+    canvas.drawLine(
+      knobCenter.translate(-dx, 0),
+      knobCenter.translate(-dx + 2.6, -dy),
+      arrowPaint,
+    );
+    canvas.drawLine(
+      knobCenter.translate(-dx, 0),
+      knobCenter.translate(-dx + 2.6, dy),
+      arrowPaint,
+    );
+    canvas.drawLine(
+      knobCenter.translate(dx, 0),
+      knobCenter.translate(dx - 2.6, -dy),
+      arrowPaint,
+    );
+    canvas.drawLine(
+      knobCenter.translate(dx, 0),
+      knobCenter.translate(dx - 2.6, dy),
+      arrowPaint,
+    );
   }
 
   @override
@@ -583,9 +615,9 @@ class _ZoomReadout extends StatelessWidget {
         child: Text(
           '${(scale * 100).round()}%',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: tokens.textSecondary,
-              ),
+            fontFeatures: const [FontFeature.tabularFigures()],
+            color: tokens.textSecondary,
+          ),
         ),
       ),
     );
