@@ -26,10 +26,12 @@ class OutputSettingsSection extends StatefulWidget {
 }
 
 class _OutputSettingsSectionState extends State<OutputSettingsSection> {
-  late final TextEditingController _template =
-      TextEditingController(text: widget.options.namingTemplate);
-  late final TextEditingController _subfolder =
-      TextEditingController(text: widget.options.subfolderName);
+  late final TextEditingController _template = TextEditingController(
+    text: widget.options.namingTemplate,
+  );
+  late final TextEditingController _subfolder = TextEditingController(
+    text: widget.options.subfolderName,
+  );
 
   @override
   void didUpdateWidget(OutputSettingsSection oldWidget) {
@@ -87,7 +89,8 @@ class _OutputSettingsSectionState extends State<OutputSettingsSection> {
             controller: _subfolder,
             icon: Symbols.folder_open,
             hint: '子文件夹名称',
-            onChanged: (value) => widget.onChanged(options.copyWith(subfolderName: value)),
+            onChanged: (value) =>
+                widget.onChanged(options.copyWith(subfolderName: value)),
           ),
 
         if (options.location == OutputLocation.custom) ...[
@@ -117,10 +120,14 @@ class _OutputSettingsSectionState extends State<OutputSettingsSection> {
         TextField(
           controller: _template,
           style: text.bodyMedium,
-          onChanged: (value) => widget.onChanged(options.copyWith(namingTemplate: value)),
+          onChanged: (value) =>
+              widget.onChanged(options.copyWith(namingTemplate: value)),
           decoration: const InputDecoration(
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: Gap.md,
+            ),
           ),
         ),
         const SizedBox(height: Gap.sm),
@@ -165,14 +172,19 @@ class _DirectoryPicker extends StatelessWidget {
 
     return InkWell(
       onTap: () async {
-        final dir = await FileDialogs.pickDirectory(confirmButtonText: '选择输出目录');
+        final dir = await FileDialogs.pickDirectory(
+          confirmButtonText: '选择输出目录',
+        );
         if (dir != null) onPicked(dir);
       },
       borderRadius: Radii.allSm,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.md,
+          vertical: Gap.md,
+        ),
         decoration: BoxDecoration(
-          color: t.surfaceSunken,
+          color: t.surfaceSunken.withValues(alpha: 0.42),
           borderRadius: Radii.allSm,
           border: Border.all(color: t.border),
         ),
@@ -221,17 +233,19 @@ class _RecentDirs extends StatelessWidget {
               onTap: () => onPick(dir),
               borderRadius: Radii.allSm,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.sm, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Gap.sm,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: t.surfaceElevated,
+                  color: t.surfaceElevated.withValues(alpha: 0.45),
                   borderRadius: Radii.allSm,
                   border: Border.all(color: t.border),
                 ),
                 child: Text(
                   p.basename(dir),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: t.textSecondary,
-                      ),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: t.textSecondary),
                 ),
               ),
             ),
@@ -258,7 +272,9 @@ class OutputResolverHints {
         .replaceAll('{w}', '1600')
         .replaceAll('{h}', '1200');
     final safe = result.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
-    final extension = options.format == OutputFormat.original ? 'png' : options.format.flag;
+    final extension = options.format == OutputFormat.original
+        ? 'png'
+        : options.format.flag;
     return '${safe.isEmpty ? 'DSC_0421_upbetter' : safe}.$extension';
   }
 }

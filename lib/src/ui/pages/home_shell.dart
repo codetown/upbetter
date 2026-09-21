@@ -79,9 +79,7 @@ class _HomeShellState extends State<HomeShell> {
     try {
       final files = await FileDialogs.collectImages(paths);
       if (files.isEmpty) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('没有找到受支持的图像文件')),
-        );
+        messenger.showSnackBar(const SnackBar(content: Text('没有找到受支持的图像文件')));
         return;
       }
 
@@ -95,11 +93,13 @@ class _HomeShellState extends State<HomeShell> {
           skipped++;
           continue;
         }
-        jobs.add(engine.createJob(
-          inputPath: files[i],
-          sourceInfo: info,
-          options: options,
-        ));
+        jobs.add(
+          engine.createJob(
+            inputPath: files[i],
+            sourceInfo: info,
+            options: options,
+          ),
+        );
       }
 
       engine.addJobs(jobs);
@@ -138,7 +138,10 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     await Future.wait(
-      List.generate(concurrency < paths.length ? concurrency : paths.length, (_) => worker()),
+      List.generate(
+        concurrency < paths.length ? concurrency : paths.length,
+        (_) => worker(),
+      ),
     );
     return results;
   }
@@ -158,7 +161,11 @@ class _HomeShellState extends State<HomeShell> {
   Map<ShortcutActivator, VoidCallback> _shortcuts() {
     return {
       const SingleActivator(LogicalKeyboardKey.keyO, control: true): _pickFiles,
-      const SingleActivator(LogicalKeyboardKey.keyO, control: true, shift: true): _pickFolder,
+      const SingleActivator(
+        LogicalKeyboardKey.keyO,
+        control: true,
+        shift: true,
+      ): _pickFolder,
       const SingleActivator(LogicalKeyboardKey.enter, control: true): () {
         final engine = _engine;
         if (engine.isRunning) {
@@ -201,23 +208,33 @@ class _HomeShellState extends State<HomeShell> {
           },
           child: Stack(
             children: [
-              Column(
-                children: [
-                  const TitleBar(),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        QueuePanel(selected: selected, onPickFiles: _pickFiles, onPickFolder: _pickFolder),
-                        _VerticalDivider(color: t.border),
-                        Expanded(child: PreviewPanel(selected: selected)),
-                        _VerticalDivider(color: t.border),
-                        SettingsPanel(selected: selected),
-                      ],
+              Positioned.fill(child: PreviewPanel(selected: selected)),
+              const Positioned(top: 0, left: 0, right: 0, child: TitleBar()),
+              Positioned(
+                top: TitleBar.defaultHeight,
+                bottom: StatusBar.height,
+                left: 0,
+                right: 0,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    QueuePanel(
+                      selected: selected,
+                      onPickFiles: _pickFiles,
+                      onPickFolder: _pickFolder,
                     ),
-                  ),
-                  StatusBar(selected: selected),
-                ],
+                    _VerticalDivider(color: t.border),
+                    const Expanded(child: SizedBox.shrink()),
+                    _VerticalDivider(color: t.border),
+                    SettingsPanel(selected: selected),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: StatusBar(selected: selected),
               ),
               _DropOverlay(visible: _dragging),
               if (_importing)
@@ -301,11 +318,17 @@ class _DropOverlay extends StatelessWidget {
           child: Center(
             child: Container(
               width: 420,
-              padding: const EdgeInsets.symmetric(horizontal: Gap.xxxl, vertical: Gap.xxl),
+              padding: const EdgeInsets.symmetric(
+                horizontal: Gap.xxxl,
+                vertical: Gap.xxl,
+              ),
               decoration: BoxDecoration(
                 color: t.surface,
                 borderRadius: Radii.allXl,
-                border: Border.all(color: t.accent.withValues(alpha: 0.5), width: 1.5),
+                border: Border.all(
+                  color: t.accent.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: t.accent.withValues(alpha: 0.2),
@@ -328,10 +351,17 @@ class _DropOverlay extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Symbols.add_photo_alternate, size: 28, color: Colors.white),
+                    child: const Icon(
+                      Symbols.add_photo_alternate,
+                      size: 28,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: Gap.lg),
-                  Text('松手即可加入队列', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    '松手即可加入队列',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: Gap.sm),
                   Text(
                     '支持 PNG · JPEG · WebP · BMP · GIF · TGA\n也可以直接拖入整个文件夹',

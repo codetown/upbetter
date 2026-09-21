@@ -27,12 +27,10 @@ class _SettingsPanelState extends State<SettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTokens.of(context);
     final scope = AppScope.of(context);
 
-    return Container(
+    return GlassSurface(
       width: SettingsPanel.width,
-      color: t.surface,
       child: ListenableBuilder(
         listenable: Listenable.merge([scope.settings, scope.runtime]),
         builder: (context, _) {
@@ -42,7 +40,12 @@ class _SettingsPanelState extends State<SettingsPanel> {
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.lg, Gap.lg, Gap.md),
+                  padding: const EdgeInsets.fromLTRB(
+                    Gap.lg,
+                    Gap.lg,
+                    Gap.lg,
+                    Gap.md,
+                  ),
                   children: [
                     ModelSection(
                       options: options,
@@ -60,7 +63,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                     const SizedBox(height: Gap.xl),
                     _AdvancedToggle(
                       open: _advancedOpen,
-                      onTap: () => setState(() => _advancedOpen = !_advancedOpen),
+                      onTap: () =>
+                          setState(() => _advancedOpen = !_advancedOpen),
                     ),
                     AnimatedSize(
                       duration: Motion.normal,
@@ -130,9 +134,7 @@ class ModelSection extends StatelessWidget {
               children: [
                 Icon(Symbols.warning, size: 16, color: t.warning),
                 const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: Text('未找到任何模型权重文件', style: text.bodySmall),
-                ),
+                Expanded(child: Text('未找到任何模型权重文件', style: text.bodySmall)),
               ],
             ),
           ),
@@ -141,8 +143,9 @@ class ModelSection extends StatelessWidget {
     }
 
     // 设置里记录的模型可能已被删除，回退到第一个可用项。
-    final activeId =
-        models.any((m) => m.id == options.modelId) ? options.modelId : models.first.id;
+    final activeId = models.any((m) => m.id == options.modelId)
+        ? options.modelId
+        : models.first.id;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +197,9 @@ class _ModelCardBody extends StatelessWidget {
               width: 1.5,
             ),
           ),
-          child: selected ? const Icon(Symbols.check, size: 12, color: Colors.white) : null,
+          child: selected
+              ? const Icon(Symbols.check, size: 12, color: Colors.white)
+              : null,
         ),
         const SizedBox(width: Gap.md),
         Expanded(
@@ -220,7 +225,10 @@ class _ModelCardBody extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 model.category.description,
-                style: text.labelSmall?.copyWith(color: t.textTertiary, height: 1.35),
+                style: text.labelSmall?.copyWith(
+                  color: t.textTertiary,
+                  height: 1.35,
+                ),
               ),
             ],
           ),
@@ -290,7 +298,10 @@ class ScaleSection extends StatelessWidget {
               child: Text(
                 '该模型的原生倍率是 $native×，选择 ${options.scale}× 会先按 $native× 推理再降采样，'
                 '画质仍然明显优于直接插值。',
-                style: text.labelSmall?.copyWith(color: t.textTertiary, height: 1.4),
+                style: text.labelSmall?.copyWith(
+                  color: t.textTertiary,
+                  height: 1.4,
+                ),
               ),
             );
           },
@@ -327,7 +338,10 @@ class _AdvancedToggleState extends State<_AdvancedToggle> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: Gap.sm, horizontal: Gap.md),
+          padding: const EdgeInsets.symmetric(
+            vertical: Gap.sm,
+            horizontal: Gap.md,
+          ),
           decoration: BoxDecoration(
             color: _hovered ? t.surfaceElevated : Colors.transparent,
             borderRadius: Radii.allSm,
@@ -338,13 +352,20 @@ class _AdvancedToggleState extends State<_AdvancedToggle> {
               Icon(Symbols.tune, size: 15, color: t.textSecondary),
               const SizedBox(width: Gap.sm),
               Expanded(
-                child: Text('高级选项', style: Theme.of(context).textTheme.titleSmall),
+                child: Text(
+                  '高级选项',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
               AnimatedRotation(
                 turns: widget.open ? 0.5 : 0,
                 duration: Motion.fast,
                 curve: Motion.standard,
-                child: Icon(Symbols.expand_more, size: 18, color: t.textTertiary),
+                child: Icon(
+                  Symbols.expand_more,
+                  size: 18,
+                  color: t.textTertiary,
+                ),
               ),
             ],
           ),
@@ -395,7 +416,12 @@ class _PanelFooter extends StatelessWidget {
                 const SizedBox(height: Gap.md),
               ],
               GradientButton(
-                label: _buttonLabel(running, stopping, pending, engine.jobs.isEmpty),
+                label: _buttonLabel(
+                  running,
+                  stopping,
+                  pending,
+                  engine.jobs.isEmpty,
+                ),
                 icon: running ? Symbols.stop : Symbols.rocket_launch,
                 busy: stopping,
                 onPressed: running
@@ -462,7 +488,7 @@ class _EstimateRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm),
       decoration: BoxDecoration(
-        color: t.surfaceSunken,
+        color: t.surfaceSunken.withValues(alpha: 0.42),
         borderRadius: Radii.allSm,
         border: Border.all(color: t.border),
       ),
@@ -531,7 +557,9 @@ class _ProgressSummary extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '总体进度',
-                        style: text.labelMedium?.copyWith(color: t.textSecondary),
+                        style: text.labelMedium?.copyWith(
+                          color: t.textSecondary,
+                        ),
                       ),
                     ),
                     Text(
@@ -565,7 +593,9 @@ class _ProgressSummary extends StatelessWidget {
                       if (eta.inSeconds > 0)
                         Text(
                           Fmt.eta(eta),
-                          style: text.labelSmall?.copyWith(color: t.textTertiary),
+                          style: text.labelSmall?.copyWith(
+                            color: t.textTertiary,
+                          ),
                         ),
                       const Spacer(),
                       if (throughput > 0)

@@ -23,13 +23,10 @@ class StatusBar extends StatelessWidget {
     final scope = AppScope.of(context);
     final engine = scope.engine;
 
-    return Container(
+    return GlassSurface(
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(top: BorderSide(color: t.border)),
-      ),
+      border: Border(top: BorderSide(color: t.border)),
       child: ListenableBuilder(
         listenable: engine,
         builder: (context, _) {
@@ -79,7 +76,8 @@ class StatusBar extends StatelessWidget {
                 iconSize: 15,
                 onPressed: () async {
                   final custom = scope.settings.options.outputDir;
-                  final job = selected.value ?? (jobs.isEmpty ? null : jobs.first);
+                  final job =
+                      selected.value ?? (jobs.isEmpty ? null : jobs.first);
                   final dir = switch (scope.settings.options.location) {
                     OutputLocation.custom when custom != null => custom,
                     OutputLocation.subfolder when job != null =>
@@ -128,7 +126,10 @@ class _Stat extends StatelessWidget {
       children: [
         Icon(icon, size: 13, color: c),
         const SizedBox(width: 5),
-        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: c)),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: c),
+        ),
       ],
     );
   }
@@ -167,7 +168,10 @@ class _AccentPicker extends StatelessWidget {
         PopupMenuItem<int>(
           // 保持 enabled，否则内部的手势无法响应；
           // 色块自己会消费点击事件，不会顺带把菜单关掉。
-          padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.lg,
+            vertical: Gap.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

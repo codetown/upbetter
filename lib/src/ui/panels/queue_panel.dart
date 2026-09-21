@@ -35,12 +35,15 @@ class QueuePanel extends StatelessWidget {
     final t = AppTokens.of(context);
     final engine = AppScope.of(context).engine;
 
-    return Container(
+    return GlassSurface(
       width: width,
-      color: t.surface,
       child: Column(
         children: [
-          _Header(engine: engine, onPickFiles: onPickFiles, onPickFolder: onPickFolder),
+          _Header(
+            engine: engine,
+            onPickFiles: onPickFiles,
+            onPickFolder: onPickFolder,
+          ),
           Divider(color: t.border, height: 1),
           Expanded(
             child: ListenableBuilder(
@@ -48,21 +51,24 @@ class QueuePanel extends StatelessWidget {
               builder: (context, _) {
                 final jobs = engine.jobs;
                 if (jobs.isEmpty) {
-                  return _EmptyQueue(onPickFiles: onPickFiles, onPickFolder: onPickFolder);
+                  return _EmptyQueue(
+                    onPickFiles: onPickFiles,
+                    onPickFolder: onPickFolder,
+                  );
                 }
                 return ReorderableListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: Gap.sm, horizontal: Gap.sm),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Gap.sm,
+                    horizontal: Gap.sm,
+                  ),
                   itemCount: jobs.length,
                   itemExtent: _rowHeight,
                   // 关掉默认手柄：桌面端它会接管整个条目的拖拽，
                   // 跟我们需要的「点击选中、拖手柄才排序」冲突。
                   buildDefaultDragHandles: false,
                   onReorderItem: engine.reorderJob,
-                  proxyDecorator: (child, index, animation) => _DragProxy(
-                    animation: animation,
-                    tokens: t,
-                    child: child,
-                  ),
+                  proxyDecorator: (child, index, animation) =>
+                      _DragProxy(animation: animation, tokens: t, child: child),
                   itemBuilder: (context, index) {
                     final job = jobs[index];
                     return _JobRow(
@@ -233,7 +239,11 @@ class _MoreMenu extends StatelessWidget {
             const PopupMenuDivider(),
             const PopupMenuItem(
               value: 'clear_all',
-              child: _MenuRow(icon: Symbols.delete, label: '清空队列', danger: true),
+              child: _MenuRow(
+                icon: Symbols.delete,
+                label: '清空队列',
+                danger: true,
+              ),
             ),
           ],
         );
@@ -243,7 +253,11 @@ class _MoreMenu extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label, this.danger = false});
+  const _MenuRow({
+    required this.icon,
+    required this.label,
+    this.danger = false,
+  });
 
   final IconData icon;
   final String label;
@@ -257,7 +271,10 @@ class _MenuRow extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: Gap.md),
-        Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color)),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+        ),
       ],
     );
   }
@@ -299,10 +316,7 @@ class _EmptyQueue extends StatelessWidget {
               label: const Text('选择图片'),
             ),
             const SizedBox(height: Gap.sm),
-            TextButton(
-              onPressed: onPickFolder,
-              child: const Text('或选择文件夹'),
-            ),
+            TextButton(onPressed: onPickFolder, child: const Text('或选择文件夹')),
           ],
         ),
       ),
@@ -347,7 +361,8 @@ class _JobRowState extends State<_JobRow> {
           onExit: (_) => setState(() => _hovered = false),
           child: GestureDetector(
             onTap: () => widget.selected.value = widget.job,
-            onSecondaryTapUp: (details) => _showContextMenu(context, details.globalPosition),
+            onSecondaryTapUp: (details) =>
+                _showContextMenu(context, details.globalPosition),
             child: AnimatedContainer(
               duration: Motion.fast,
               curve: Motion.standard,
@@ -356,16 +371,22 @@ class _JobRowState extends State<_JobRow> {
                 color: isSelected
                     ? t.accentSoft
                     : _hovered
-                        ? t.surfaceElevated
-                        : Colors.transparent,
+                    ? t.surfaceElevated
+                    : Colors.transparent,
                 borderRadius: Radii.allMd,
                 border: Border.all(
-                  color: isSelected ? t.accent.withValues(alpha: 0.45) : Colors.transparent,
+                  color: isSelected
+                      ? t.accent.withValues(alpha: 0.45)
+                      : Colors.transparent,
                 ),
               ),
               child: Row(
                 children: [
-                  _DragHandle(index: widget.index, visible: _hovered, tokens: t),
+                  _DragHandle(
+                    index: widget.index,
+                    visible: _hovered,
+                    tokens: t,
+                  ),
                   _Thumbnail(job: widget.job),
                   const SizedBox(width: Gap.md),
                   Expanded(
@@ -388,7 +409,8 @@ class _JobRowState extends State<_JobRow> {
   Future<void> _showContextMenu(BuildContext context, Offset position) async {
     final job = widget.job;
     final output = job.outputPath.value;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
 
     final result = await showMenu<String>(
@@ -398,15 +420,30 @@ class _JobRowState extends State<_JobRow> {
         Offset.zero & overlay.size,
       ),
       items: [
-        const PopupMenuItem(value: 'reveal', child: _MenuRow(icon: Symbols.folder_open, label: '打开所在文件夹')),
+        const PopupMenuItem(
+          value: 'reveal',
+          child: _MenuRow(icon: Symbols.folder_open, label: '打开所在文件夹'),
+        ),
         if (output != null)
-          const PopupMenuItem(value: 'reveal_out', child: _MenuRow(icon: Symbols.image, label: '定位输出文件')),
+          const PopupMenuItem(
+            value: 'reveal_out',
+            child: _MenuRow(icon: Symbols.image, label: '定位输出文件'),
+          ),
         const PopupMenuDivider(),
         if (!job.status.value.isTerminal)
-          const PopupMenuItem(value: 'cancel', child: _MenuRow(icon: Symbols.cancel, label: '取消此任务')),
+          const PopupMenuItem(
+            value: 'cancel',
+            child: _MenuRow(icon: Symbols.cancel, label: '取消此任务'),
+          ),
         if (job.status.value != JobStatus.queued)
-          const PopupMenuItem(value: 'retry', child: _MenuRow(icon: Symbols.restart_alt, label: '重新排队')),
-        const PopupMenuItem(value: 'remove', child: _MenuRow(icon: Symbols.close, label: '从队列移除', danger: true)),
+          const PopupMenuItem(
+            value: 'retry',
+            child: _MenuRow(icon: Symbols.restart_alt, label: '重新排队'),
+          ),
+        const PopupMenuItem(
+          value: 'remove',
+          child: _MenuRow(icon: Symbols.close, label: '从队列移除', danger: true),
+        ),
       ],
     );
 
@@ -431,7 +468,11 @@ class _JobRowState extends State<_JobRow> {
 
 /// 拖拽手柄。只在悬停时出现，避免静止状态下干扰视觉。
 class _DragHandle extends StatelessWidget {
-  const _DragHandle({required this.index, required this.visible, required this.tokens});
+  const _DragHandle({
+    required this.index,
+    required this.visible,
+    required this.tokens,
+  });
 
   final int index;
   final bool visible;
@@ -480,7 +521,8 @@ class _Thumbnail extends StatelessWidget {
     return ValueListenableBuilder<String?>(
       valueListenable: job.outputPath,
       builder: (context, outputPath, _) {
-        final hasResult = job.status.value == JobStatus.done &&
+        final hasResult =
+            job.status.value == JobStatus.done &&
             outputPath != null &&
             File(outputPath).existsSync();
         final path = hasResult ? outputPath : job.inputPath;
@@ -496,7 +538,13 @@ class _Thumbnail extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CustomPaint(painter: CheckerboardPainter(light: t.checkerLight, dark: t.checkerDark, cellSize: 6)),
+                  CustomPaint(
+                    painter: CheckerboardPainter(
+                      light: t.checkerLight,
+                      dark: t.checkerDark,
+                      cellSize: 6,
+                    ),
+                  ),
                   Image.file(
                     File(path),
                     fit: BoxFit.cover,
@@ -520,7 +568,11 @@ class _Thumbnail extends StatelessWidget {
                           color: t.success,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Icon(Symbols.check, size: 9, color: Colors.white),
+                        child: const Icon(
+                          Symbols.check,
+                          size: 9,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                 ],
@@ -584,7 +636,9 @@ class _Details extends StatelessWidget {
                         tooltip: cancellable ? '取消此任务' : '从队列移除',
                         size: 20,
                         iconSize: 13,
-                        onPressed: hovered ? (cancellable ? onCancel : onRemove) : null,
+                        onPressed: hovered
+                            ? (cancellable ? onCancel : onRemove)
+                            : null,
                       ),
                     ),
                   );
@@ -599,7 +653,12 @@ class _Details extends StatelessWidget {
               return ValueListenableBuilder<double>(
                 valueListenable: job.progress,
                 builder: (context, progress, _) {
-                  return _StatusLine(job: job, status: status, progress: progress, tokens: t);
+                  return _StatusLine(
+                    job: job,
+                    status: status,
+                    progress: progress,
+                    tokens: t,
+                  );
                 },
               );
             },
@@ -648,7 +707,9 @@ class _StatusLine extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             '${Fmt.percent(progress)} · ${Fmt.dimensions(job.outputWidth, job.outputHeight)}',
-            style: text.labelSmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: text.labelSmall?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       );
@@ -681,14 +742,14 @@ class _StatusLine extends StatelessWidget {
 
     final (label, color) = switch (status) {
       JobStatus.done => (
-          '完成 · ${Fmt.dimensions(job.outputWidth, job.outputHeight)}$elapsedSuffix',
-          t.success,
-        ),
+        '完成 · ${Fmt.dimensions(job.outputWidth, job.outputHeight)}$elapsedSuffix',
+        t.success,
+      ),
       JobStatus.canceled => ('已取消', t.textTertiary),
       JobStatus.queued => (
-          '${Fmt.dimensions(job.sourceInfo.width, job.sourceInfo.height)} · 排队中',
-          t.textTertiary,
-        ),
+        '${Fmt.dimensions(job.sourceInfo.width, job.sourceInfo.height)} · 排队中',
+        t.textTertiary,
+      ),
       _ => ('', t.textTertiary),
     };
 

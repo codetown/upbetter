@@ -22,7 +22,8 @@ class PreviewPanel extends StatefulWidget {
 }
 
 class _PreviewPanelState extends State<PreviewPanel> {
-  final GlobalKey<CompareCanvasState> _canvasKey = GlobalKey<CompareCanvasState>();
+  final GlobalKey<CompareCanvasState> _canvasKey =
+      GlobalKey<CompareCanvasState>();
 
   ViewMode _mode = ViewMode.split;
 
@@ -49,23 +50,34 @@ class _PreviewPanelState extends State<PreviewPanel> {
 
         return Container(
           color: t.canvas,
-          child: Column(
+          child: Stack(
             children: [
-              _Toolbar(
-                job: job,
-                mode: _mode,
-                onModeChanged: _setMode,
-                onFit: _fit,
-                onActualSize: _actualSize,
-                onZoomIn: () => _zoom(1.25),
-                onZoomOut: () => _zoom(0.8),
-              ),
-              Expanded(
+              Positioned.fill(
                 child: _CanvasHost(
                   job: job,
                   mode: _effectiveMode(job),
                   canvasKey: _canvasKey,
                   onJobSized: _scheduleFit,
+                ),
+              ),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SizedBox(height: 42),
+              ),
+              Positioned(
+                top: 42,
+                left: 0,
+                right: 0,
+                child: _Toolbar(
+                  job: job,
+                  mode: _mode,
+                  onModeChanged: _setMode,
+                  onFit: _fit,
+                  onActualSize: _actualSize,
+                  onZoomIn: () => _zoom(1.25),
+                  onZoomOut: () => _zoom(0.8),
                 ),
               ),
             ],
@@ -98,7 +110,9 @@ class _PreviewPanelState extends State<PreviewPanel> {
 
   static bool _hasResult(UpscaleJob job) {
     final path = job.outputPath.value;
-    return job.status.value == JobStatus.done && path != null && File(path).existsSync();
+    return job.status.value == JobStatus.done &&
+        path != null &&
+        File(path).existsSync();
   }
 
   void _setMode(ViewMode mode) {
@@ -110,7 +124,8 @@ class _PreviewPanelState extends State<PreviewPanel> {
     if (event.logicalKey != LogicalKeyboardKey.space) return false;
     // 正在输入框里打字时不要抢走空格。
     final focus = FocusManager.instance.primaryFocus;
-    if (focus?.context?.widget is EditableText || focus?.context?.widget is TextField) {
+    if (focus?.context?.widget is EditableText ||
+        focus?.context?.widget is TextField) {
       return false;
     }
     if (event is KeyDownEvent) {
@@ -193,7 +208,8 @@ class _CanvasHostState extends State<_CanvasHost> {
       builder: (context, _, _) => ValueListenableBuilder<String?>(
         valueListenable: job.outputPath,
         builder: (context, outputPath, _) {
-          final hasResult = job.status.value == JobStatus.done &&
+          final hasResult =
+              job.status.value == JobStatus.done &&
               outputPath != null &&
               File(outputPath).existsSync();
 
@@ -253,16 +269,18 @@ class _Toolbar extends StatelessWidget {
       job.sourceInfo.width.toDouble(),
       job.sourceInfo.height.toDouble(),
     );
-    final resultSize = Size(job.outputWidth.toDouble(), job.outputHeight.toDouble());
-    final shownSize = mode == ViewMode.original && !hasResult ? sourceSize : resultSize;
+    final resultSize = Size(
+      job.outputWidth.toDouble(),
+      job.outputHeight.toDouble(),
+    );
+    final shownSize = mode == ViewMode.original && !hasResult
+        ? sourceSize
+        : resultSize;
 
-    return Container(
+    return GlassSurface(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: Gap.md),
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(bottom: BorderSide(color: t.border)),
-      ),
+      border: Border(bottom: BorderSide(color: t.border)),
       child: Row(
         children: [
           Expanded(
@@ -278,7 +296,10 @@ class _Toolbar extends StatelessWidget {
                 ),
                 const SizedBox(width: Gap.sm),
                 Text(
-                  Fmt.dimensions(shownSize.width.toInt(), shownSize.height.toInt()),
+                  Fmt.dimensions(
+                    shownSize.width.toInt(),
+                    shownSize.height.toInt(),
+                  ),
                   style: text.labelSmall?.copyWith(
                     color: t.textTertiary,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -309,13 +330,23 @@ class _Toolbar extends StatelessWidget {
           else
             StatusBadge(
               label: job.status.value == JobStatus.running ? '处理中' : '尚未放大',
-              color: job.status.value == JobStatus.running ? t.accent : t.textTertiary,
+              color: job.status.value == JobStatus.running
+                  ? t.accent
+                  : t.textTertiary,
             ),
           const SizedBox(width: Gap.md),
           IconBtn(icon: Symbols.zoom_out, tooltip: '缩小', onPressed: onZoomOut),
           IconBtn(icon: Symbols.zoom_in, tooltip: '放大', onPressed: onZoomIn),
-          IconBtn(icon: Symbols.fit_screen, tooltip: '适应窗口  (双击画布)', onPressed: onFit),
-          IconBtn(icon: Symbols.crop_free, tooltip: '实际像素 1:1', onPressed: onActualSize),
+          IconBtn(
+            icon: Symbols.fit_screen,
+            tooltip: '适应窗口  (双击画布)',
+            onPressed: onFit,
+          ),
+          IconBtn(
+            icon: Symbols.crop_free,
+            tooltip: '实际像素 1:1',
+            onPressed: onActualSize,
+          ),
           if (hasResult) ...[
             const SizedBox(width: Gap.xs),
             IconBtn(

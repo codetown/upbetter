@@ -5,13 +5,16 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/engine/upscale_engine.dart';
 import '../app.dart';
 import '../theme/tokens.dart';
+import '../widgets/primitives.dart';
 
 /// 自绘标题栏。
 ///
 /// 系统标题栏会打断整体视觉语言，而且无法承载「当前 GPU」这类
 /// 需要常驻可见的状态信息，因此完全自绘。
 class TitleBar extends StatelessWidget {
-  const TitleBar({super.key, this.height = 42});
+  const TitleBar({super.key, this.height = defaultHeight});
+
+  static const double defaultHeight = 42;
 
   final double height;
 
@@ -20,12 +23,9 @@ class TitleBar extends StatelessWidget {
     final t = AppTokens.of(context);
     final engine = AppScope.of(context).engine;
 
-    return Container(
+    return GlassSurface(
       height: height,
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(bottom: BorderSide(color: t.border)),
-      ),
+      border: Border(bottom: BorderSide(color: t.border)),
       child: Row(
         children: [
           const SizedBox(width: Gap.md),

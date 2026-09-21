@@ -9,11 +9,11 @@ class DesktopScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => const {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
 
   @override
   Widget buildOverscrollIndicator(
@@ -64,11 +64,7 @@ ThemeData buildAppTheme(AppTokens t) {
     splashFactory: InkSparkle.splashFactory,
     visualDensity: VisualDensity.compact,
     extensions: [t],
-    dividerTheme: DividerThemeData(
-      color: t.border,
-      thickness: 1,
-      space: 1,
-    ),
+    dividerTheme: DividerThemeData(color: t.border, thickness: 1, space: 1),
     iconTheme: IconThemeData(color: t.textSecondary, size: 18),
     tooltipTheme: TooltipThemeData(
       waitDuration: const Duration(milliseconds: 420),
@@ -106,7 +102,10 @@ ThemeData buildAppTheme(AppTokens t) {
         foregroundColor: t.accentContrast,
         disabledBackgroundColor: t.surfaceElevated,
         disabledForegroundColor: t.textTertiary,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.xl, vertical: Gap.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.xl,
+          vertical: Gap.md,
+        ),
         textStyle: text.labelLarge,
         shape: const RoundedRectangleBorder(borderRadius: Radii.allMd),
         elevation: 0,
@@ -116,7 +115,10 @@ ThemeData buildAppTheme(AppTokens t) {
       style: OutlinedButton.styleFrom(
         foregroundColor: t.textPrimary,
         side: BorderSide(color: t.borderStrong),
-        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
         textStyle: text.labelLarge,
         shape: const RoundedRectangleBorder(borderRadius: Radii.allMd),
       ),
@@ -124,7 +126,10 @@ ThemeData buildAppTheme(AppTokens t) {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: t.textSecondary,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.md,
+          vertical: Gap.sm,
+        ),
         textStyle: text.labelLarge,
         shape: const RoundedRectangleBorder(borderRadius: Radii.allSm),
       ),
@@ -147,13 +152,17 @@ ThemeData buildAppTheme(AppTokens t) {
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? Colors.white : t.textTertiary,
+        (states) => states.contains(WidgetState.selected)
+            ? Colors.white
+            : t.textTertiary,
       ),
       trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? t.accent : t.surfaceSunken,
+        (states) =>
+            states.contains(WidgetState.selected) ? t.accent : t.surfaceSunken,
       ),
       trackOutlineColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? t.accent : t.borderStrong,
+        (states) =>
+            states.contains(WidgetState.selected) ? t.accent : t.borderStrong,
       ),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -194,9 +203,12 @@ ThemeData buildAppTheme(AppTokens t) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: t.surfaceSunken,
+      fillColor: t.surfaceSunken.withValues(alpha: 0.42),
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.md),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: Gap.md,
+        vertical: Gap.md,
+      ),
       hintStyle: text.bodyMedium?.copyWith(color: t.textTertiary),
       border: OutlineInputBorder(
         borderRadius: Radii.allSm,

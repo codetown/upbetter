@@ -1,6 +1,47 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+
+class GlassSurface extends StatelessWidget {
+  const GlassSurface({
+    super.key,
+    required this.child,
+    this.width,
+    this.height,
+    this.padding,
+    this.color,
+    this.border,
+  });
+
+  final Widget child;
+  final double? width;
+  final double? height;
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+  final Border? border;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTokens.of(context);
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: width,
+          height: height,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: color ?? t.surface.withValues(alpha: 0.78),
+            border: border,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
 
 /// 基础面板：一块带描边的表面。
 class Panel extends StatelessWidget {
@@ -57,10 +98,10 @@ class SectionLabel extends StatelessWidget {
             child: Text(
               text.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: t.textTertiary,
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: t.textTertiary,
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ?trailing,
@@ -101,8 +142,8 @@ class IconBtn extends StatelessWidget {
     final effectiveColor = !enabled
         ? t.textTertiary.withValues(alpha: 0.5)
         : active
-            ? t.accent
-            : (color ?? t.textSecondary);
+        ? t.accent
+        : (color ?? t.textSecondary);
 
     Widget button = Material(
       color: filled || active ? t.accentSoft : Colors.transparent,
@@ -110,7 +151,9 @@ class IconBtn extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: Radii.allSm,
-        hoverColor: t.isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+        hoverColor: t.isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.04),
         child: SizedBox(
           width: size,
           height: size,
@@ -151,7 +194,9 @@ class SegmentedControl<T> extends StatelessWidget {
       children: [
         for (var i = 0; i < segments.length; i++)
           expand
-              ? Expanded(child: _buildItem(context, t, segments[i], i == safeIndex))
+              ? Expanded(
+                  child: _buildItem(context, t, segments[i], i == safeIndex),
+                )
               : _buildItem(context, t, segments[i], i == safeIndex),
       ],
     );
@@ -159,20 +204,28 @@ class SegmentedControl<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: t.surfaceSunken,
+        color: t.surfaceSunken.withValues(alpha: 0.42),
         borderRadius: Radii.allMd,
         border: Border.all(color: t.border),
       ),
       child: expand
           ? row
-          : Row(mainAxisSize: MainAxisSize.min, children: [
-              for (var i = 0; i < segments.length; i++)
-                _buildItem(context, t, segments[i], i == safeIndex),
-            ]),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < segments.length; i++)
+                  _buildItem(context, t, segments[i], i == safeIndex),
+              ],
+            ),
     );
   }
 
-  Widget _buildItem(BuildContext context, AppTokens t, Segment<T> segment, bool selected) {
+  Widget _buildItem(
+    BuildContext context,
+    AppTokens t,
+    Segment<T> segment,
+    bool selected,
+  ) {
     return AnimatedContainer(
       duration: Motion.fast,
       curve: Motion.standard,
@@ -183,11 +236,16 @@ class SegmentedControl<T> extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: segment.enabled && !selected ? () => onChanged(segment.value) : null,
+          onTap: segment.enabled && !selected
+              ? () => onChanged(segment.value)
+              : null,
           borderRadius: Radii.allSm,
           hoverColor: selected ? Colors.transparent : t.accentSoft,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: Gap.sm,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -197,13 +255,13 @@ class SegmentedControl<T> extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: !segment.enabled
-                            ? t.textTertiary.withValues(alpha: 0.5)
-                            : selected
-                                ? t.accentContrast
-                                : t.textSecondary,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                      ),
+                    color: !segment.enabled
+                        ? t.textTertiary.withValues(alpha: 0.5)
+                        : selected
+                        ? t.accentContrast
+                        : t.textSecondary,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
                 if (segment.caption != null) ...[
                   const SizedBox(height: 1),
@@ -213,11 +271,11 @@ class SegmentedControl<T> extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 10,
-                          color: selected
-                              ? t.accentContrast.withValues(alpha: 0.8)
-                              : t.textTertiary,
-                        ),
+                      fontSize: 10,
+                      color: selected
+                          ? t.accentContrast.withValues(alpha: 0.8)
+                          : t.textTertiary,
+                    ),
                   ),
                 ],
               ],
@@ -323,14 +381,19 @@ class _GradientButtonState extends State<GradientButton> {
                       ),
                     )
                   else if (widget.icon != null)
-                    Icon(widget.icon, size: 18, color: enabled ? Colors.white : t.textTertiary),
-                  if (widget.busy || widget.icon != null) const SizedBox(width: Gap.sm),
+                    Icon(
+                      widget.icon,
+                      size: 18,
+                      color: enabled ? Colors.white : t.textTertiary,
+                    ),
+                  if (widget.busy || widget.icon != null)
+                    const SizedBox(width: Gap.sm),
                   Text(
                     widget.label,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: enabled ? Colors.white : t.textTertiary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: enabled ? Colors.white : t.textTertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -379,10 +442,10 @@ class StatusBadge extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: dense ? 10 : 11,
-                ),
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: dense ? 10 : 11,
+            ),
           ),
         ],
       ),
@@ -471,15 +534,15 @@ class _SelectableCardState extends State<SelectableCard> {
             color: widget.selected
                 ? t.accentSoft
                 : _hovered
-                    ? t.surfaceElevated
-                    : Colors.transparent,
+                ? t.surfaceElevated.withValues(alpha: 0.45)
+                : Colors.transparent,
             borderRadius: Radii.allMd,
             border: Border.all(
               color: widget.selected
                   ? t.accent.withValues(alpha: 0.55)
                   : _hovered
-                      ? t.borderStrong
-                      : t.border,
+                  ? t.borderStrong
+                  : t.border,
               width: widget.selected ? 1.4 : 1,
             ),
           ),
@@ -521,7 +584,9 @@ class CheckerboardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CheckerboardPainter oldDelegate) =>
-      light != oldDelegate.light || dark != oldDelegate.dark || cellSize != oldDelegate.cellSize;
+      light != oldDelegate.light ||
+      dark != oldDelegate.dark ||
+      cellSize != oldDelegate.cellSize;
 }
 
 /// 空状态占位。
@@ -562,15 +627,8 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: Gap.lg),
             Text(title, style: text.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: Gap.sm),
-            Text(
-              message,
-              style: text.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-            if (action != null) ...[
-              const SizedBox(height: Gap.xl),
-              action!,
-            ],
+            Text(message, style: text.bodySmall, textAlign: TextAlign.center),
+            if (action != null) ...[const SizedBox(height: Gap.xl), action!],
           ],
         ),
       ),
@@ -595,7 +653,8 @@ class Skeleton extends StatefulWidget {
   State<Skeleton> createState() => _SkeletonState();
 }
 
-class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin {
+class _SkeletonState extends State<Skeleton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -664,7 +723,10 @@ class SwitchRow extends StatelessWidget {
             children: [
               Text(label, style: text.bodyMedium),
               const SizedBox(height: 1),
-              Text(detail, style: text.labelSmall?.copyWith(color: t.textTertiary)),
+              Text(
+                detail,
+                style: text.labelSmall?.copyWith(color: t.textTertiary),
+              ),
             ],
           ),
         ),
