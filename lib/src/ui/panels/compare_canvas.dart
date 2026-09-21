@@ -37,7 +37,6 @@ class CompareCanvas extends StatefulWidget {
     required this.mode,
     this.viewportInsets = EdgeInsets.zero,
   });
-
   final String? beforePath;
   final String? afterPath;
 
@@ -49,6 +48,56 @@ class CompareCanvas extends StatefulWidget {
 
   /// 画布可以铺满窗口，但图片适配应以中间可视区域为基准。
   final EdgeInsets viewportInsets;
+
+  static Matrix4 composeMatrix(double dx, double dy, double scale) =>
+      Matrix4.identity()
+        ..translateByDouble(dx, dy, 0, 1)
+        ..scaleByDouble(scale, scale, 1, 1);
+
+  static double fitScaleFor(Size logicalSize, Rect viewport) {
+    if (logicalSize.isEmpty || viewport.isEmpty) return 1.0;
+    return math.min(
+      1.0,
+      math.min(
+        viewport.width / logicalSize.width,
+        viewport.height / logicalSize.height,
+      ),
+    );
+  }
+
+  static double minimumScaleFor(Size logicalSize, Rect viewport) {
+    if (logicalSize.isEmpty || viewport.isEmpty) return 1.0;
+    final fitScale = fitScaleFor(logicalSize, viewport);
+    final naturalMin =
+        logicalSize.width <= viewport.width &&
+            logicalSize.height <= viewport.height
+        ? 1.0
+        : fitScale;
+    return math.min(1.0, naturalMin);
+  }
+
+  static double scaleOf(Matrix4 matrix) {
+    final x = matrix.storage[0].abs();
+    final y = matrix.storage[5].abs();
+    return math.max(x, y);
+  }
+
+  static Matrix4 constrainPan(
+    Matrix4 matrix, {
+    required Size logicalSize,
+    required Rect viewport,
+    required Offset delta,
+  }) {
+    final currentScale = scaleOf(matrix);
+    final fitScale = fitScaleFor(logicalSize, viewport);
+    final safeScale = currentScale <= fitScale + 1e-6 ? fitScale : currentScale;
+    final next = composeMatrix(
+      matrix.storage[12] + delta.dx,
+      matrix.storage[13] + delta.dy,
+      safeScale,
+    );
+    return next;
+  }
 
   @override
   State<CompareCanvas> createState() => CompareCanvasState();
@@ -92,7 +141,8 @@ class CompareCanvasState extends State<CompareCanvas>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.logicalSize != widget.logicalSize ||
         oldWidget.beforePath != widget.beforePath ||
-        oldWidget.afterPath != widget.afterPath) {
+        oldWidget.afterPath != widget.afterPath ||
+        oldWidget.viewportInsets != widget.viewportInsets) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final box = context.findRenderObject() as RenderBox?;
@@ -113,11 +163,6 @@ class CompareCanvasState extends State<CompareCanvas>
   ///
   /// 画布的变换始终是纯缩放 + 纯平移（没有旋转/斜切），
   /// 因此用一个二维参数化就能完整表达，也让边界约束变得简单可靠。
-  static Matrix4 _compose(double dx, double dy, double scale) =>
-      Matrix4.identity()
-        ..translateByDouble(dx, dy, 0, 1)
-        ..scaleByDouble(scale, scale, 1, 1);
-
   Rect _viewportRect(Size canvasSize) {
     final width = math.max(
       0.0,
@@ -148,7 +193,7 @@ class CompareCanvasState extends State<CompareCanvas>
         viewportRect.height / widget.logicalSize.height,
       ),
     );
-    _controller.value = _compose(
+    _controller.value = CompareCanvas.composeMatrix(
       viewportRect.left +
           (viewportRect.width - widget.logicalSize.width * scale) / 2,
       viewportRect.top +
@@ -159,13 +204,13 @@ class CompareCanvasState extends State<CompareCanvas>
 
   /// 1:1 显示，以窗口中心为锚点。
   void zoomToActualSize(Size viewport) {
-    final current = _controller.value.getMaxScaleOnAxis();
+    final current = CompareCanvas.scaleOf(_controller.value);
     final target = 1.0;
     final factor = target / current;
     _zoomAround(_viewportRect(viewport).center, factor, viewport);
   }
 
-  double get currentScale => _controller.value.getMaxScaleOnAxis();
+  double get currentScale => CompareCanvas.scaleOf(_controller.value);
 
   /// 以视口中心为锚点缩放。供工具栏的 +/− 按钮使用。
   void zoomBy(double factor, Size viewport) {
@@ -183,8 +228,12 @@ class CompareCanvasState extends State<CompareCanvas>
     Size viewport,
     Matrix4 matrix,
   ) {
-    final currentScale = matrix.getMaxScaleOnAxis();
-    final nextScale = (currentScale * factor).clamp(0.02, 16.0);
+    final currentScale = CompareCanvas.scaleOf(matrix);
+    final minScale = CompareCanvas.minimumScaleFor(
+      widget.logicalSize,
+      _viewportRect(viewport),
+    );
+    final nextScale = (currentScale * factor).clamp(minScale, 16.0);
     if (nextScale == currentScale) return;
 
     final next = nextScale < currentScale
@@ -200,8 +249,12 @@ class CompareCanvasState extends State<CompareCanvas>
     final base = factor < 1
         ? _controller.value
         : (_zoomTarget ?? _controller.value);
-    final currentScale = base.getMaxScaleOnAxis();
-    final nextScale = (currentScale * factor).clamp(0.02, 16.0);
+    final currentScale = CompareCanvas.scaleOf(base);
+    final minScale = CompareCanvas.minimumScaleFor(
+      widget.logicalSize,
+      _viewportRect(viewport),
+    );
+    final nextScale = (currentScale * factor).clamp(minScale, 16.0);
     if (nextScale == currentScale) return;
 
     if (nextScale < currentScale) {
@@ -222,7 +275,7 @@ class CompareCanvasState extends State<CompareCanvas>
 
   Matrix4 _centeredTransform(Size viewport, double scale) {
     final rect = _viewportRect(viewport);
-    return _compose(
+    return CompareCanvas.composeMatrix(
       rect.left + (rect.width - widget.logicalSize.width * scale) / 2,
       rect.top + (rect.height - widget.logicalSize.height * scale) / 2,
       scale,
@@ -230,8 +283,8 @@ class CompareCanvasState extends State<CompareCanvas>
   }
 
   Matrix4 _zoomedTransform(Offset focal, Matrix4 matrix, double scale) {
-    final applied = scale / matrix.getMaxScaleOnAxis();
-    return _compose(
+    final applied = scale / CompareCanvas.scaleOf(matrix);
+    return CompareCanvas.composeMatrix(
       focal.dx - (focal.dx - matrix.storage[12]) * applied,
       focal.dy - (focal.dy - matrix.storage[13]) * applied,
       scale,
@@ -244,11 +297,11 @@ class CompareCanvasState extends State<CompareCanvas>
     final start = _zoomStart ?? _controller.value;
     final progress = Curves.easeOut.transform(_zoomAnimation.value);
     final scale = ui.lerpDouble(
-      start.getMaxScaleOnAxis(),
-      target.getMaxScaleOnAxis(),
+      CompareCanvas.scaleOf(start),
+      CompareCanvas.scaleOf(target),
       progress,
     )!;
-    _controller.value = _compose(
+    _controller.value = CompareCanvas.composeMatrix(
       ui.lerpDouble(start.storage[12], target.storage[12], progress)!,
       ui.lerpDouble(start.storage[13], target.storage[13], progress)!,
       scale,
@@ -285,7 +338,7 @@ class CompareCanvasState extends State<CompareCanvas>
           );
 
     if (dx == matrix.storage[12] && dy == matrix.storage[13]) return matrix;
-    return _compose(dx, dy, scale);
+    return CompareCanvas.composeMatrix(dx, dy, scale);
   }
 
   void _onPointerSignal(PointerSignalEvent event, Size viewport) {
@@ -321,7 +374,13 @@ class CompareCanvasState extends State<CompareCanvas>
           onPointerSignal: (event) => _onPointerSignal(event, viewport),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onDoubleTapDown: (details) {
+            onTapDown: (_) {
+              // 普通点击/按下只作为交互，不改变图像大小。
+              _cancelZoomAnimation();
+            },
+            onTap: () {},
+            onTapCancel: () {},
+            onDoubleTap: () {
               // 双击在「适配」与「1:1」之间切换，是最常用的两个视图。
               if (currentScale > 0.9 && currentScale < 1.1) {
                 fitToViewport(viewport);
@@ -336,14 +395,17 @@ class CompareCanvasState extends State<CompareCanvas>
             onPanEnd: (_) => setState(() => _panning = false),
             onPanUpdate: (details) {
               final matrix = _controller.value;
-              final scale = matrix.getMaxScaleOnAxis();
-              final next = _compose(
-                matrix.storage[12] + details.delta.dx,
-                matrix.storage[13] + details.delta.dy,
-                scale,
+              final next = CompareCanvas.constrainPan(
+                matrix,
+                logicalSize: widget.logicalSize,
+                viewport: _viewportRect(viewport),
+                delta: details.delta,
               );
-              _controller.value = _constrain(next, viewport, scale);
-              setState(() {});
+              _controller.value = _constrain(
+                next,
+                viewport,
+                CompareCanvas.scaleOf(next),
+              );
             },
             child: MouseRegion(
               cursor: _panning
@@ -361,19 +423,27 @@ class CompareCanvasState extends State<CompareCanvas>
                   ),
                   if (widget.mode == ViewMode.split && widget.afterPath != null)
                     _SplitHandle(
-                      position: _split * viewport.width,
-                      height: viewport.height,
+                      position:
+                          _viewportRect(viewport).left +
+                          _split * _viewportRect(viewport).width,
+                      top: _viewportRect(viewport).top,
+                      height: _viewportRect(viewport).height,
                       tokens: t,
                       dragging: _draggingSplit,
                       onDragStart: () => setState(() => _draggingSplit = true),
                       onDragEnd: () => setState(() => _draggingSplit = false),
                       onDrag: (dx) => setState(() {
-                        _split = (_split + dx / viewport.width).clamp(0.0, 1.0);
+                        final rect = _viewportRect(viewport);
+                        if (rect.width == 0) return;
+                        _split = (_split + dx / rect.width).clamp(0.0, 1.0);
                       }),
                     ),
                   Positioned(
-                    left: Gap.md,
-                    bottom: Gap.md,
+                    left: _viewportRect(viewport).left + Gap.md,
+                    bottom:
+                        viewport.height -
+                        _viewportRect(viewport).bottom +
+                        Gap.md,
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, _) =>
@@ -437,7 +507,7 @@ class CompareCanvasState extends State<CompareCanvas>
         before,
         Positioned.fill(
           child: ClipRect(
-            clipper: _LeftFractionClipper(_split),
+            clipper: _LeftFractionClipper(_viewportRect(viewport), _split),
             child: Stack(clipBehavior: Clip.none, children: [after]),
           ),
         ),
@@ -448,17 +518,22 @@ class CompareCanvasState extends State<CompareCanvas>
 
 /// 在屏幕空间按比例裁剪左侧区域。
 class _LeftFractionClipper extends CustomClipper<Rect> {
-  const _LeftFractionClipper(this.fraction);
+  const _LeftFractionClipper(this.viewport, this.fraction);
 
+  final Rect viewport;
   final double fraction;
 
   @override
-  Rect getClip(Size size) =>
-      Rect.fromLTWH(0, 0, size.width * fraction, size.height);
+  Rect getClip(Size size) => Rect.fromLTWH(
+    viewport.left,
+    viewport.top,
+    viewport.width * fraction,
+    viewport.height,
+  );
 
   @override
   bool shouldReclip(_LeftFractionClipper oldClipper) =>
-      oldClipper.fraction != fraction;
+      oldClipper.viewport != viewport || oldClipper.fraction != fraction;
 }
 
 class _ViewportBackground extends CustomPainter {
@@ -534,6 +609,9 @@ class _ImageLayerViewState extends State<_ImageLayerView> {
   }
 
   void _disposeImages() {
+    _detailDebounce?.cancel();
+    _detailDebounce = null;
+    _loadToken++;
     _preview?.dispose();
     _preview = null;
     _detail?.dispose();
@@ -555,10 +633,15 @@ class _ImageLayerViewState extends State<_ImageLayerView> {
   /// 几百毫秒的解码，不应该在打开文件时就付出这个代价。
   void _maybeLoadDetail() {
     if (_detail != null || _loadingDetail) return;
-    if (widget.viewportScale < 0.55) return;
+    if (widget.viewportScale < 0.55) {
+      _detailDebounce?.cancel();
+      _detailDebounce = null;
+      return;
+    }
 
     _detailDebounce?.cancel();
     _detailDebounce = Timer(const Duration(milliseconds: 260), () async {
+      _detailDebounce = null;
       if (!mounted || _detail != null || _loadingDetail) return;
       _loadingDetail = true;
       final token = _loadToken;
@@ -629,9 +712,12 @@ Future<ui.Image?> decodeImageCapped(String path, int maxEdge) async {
       targetWidth: targetWidth,
       targetHeight: targetHeight,
     );
-    final frame = await codec.getNextFrame();
-    codec.dispose();
-    return frame.image;
+    try {
+      final frame = await codec.getNextFrame();
+      return frame.image;
+    } finally {
+      codec.dispose();
+    }
   } on Object {
     return null;
   } finally {
@@ -643,6 +729,7 @@ Future<ui.Image?> decodeImageCapped(String path, int maxEdge) async {
 class _SplitHandle extends StatelessWidget {
   const _SplitHandle({
     required this.position,
+    required this.top,
     required this.height,
     required this.tokens,
     required this.dragging,
@@ -652,6 +739,7 @@ class _SplitHandle extends StatelessWidget {
   });
 
   final double position;
+  final double top;
   final double height;
   final AppTokens tokens;
   final bool dragging;
@@ -663,7 +751,7 @@ class _SplitHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       left: position - 22,
-      top: 0,
+      top: top,
       width: 44,
       height: height,
       child: MouseRegion(

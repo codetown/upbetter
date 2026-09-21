@@ -64,7 +64,7 @@ class _PreviewPanelState extends State<PreviewPanel> {
                   onJobSized: _scheduleFit,
                   viewportInsets: const EdgeInsets.fromLTRB(
                     QueuePanel.width + 1,
-                    TitleBar.defaultHeight,
+                    TitleBar.defaultHeight + 44,
                     SettingsPanel.width + 1,
                     StatusBar.height,
                   ),
