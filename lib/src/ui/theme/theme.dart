@@ -157,8 +157,9 @@ ThemeData buildAppTheme(AppTokens t) {
             : t.textTertiary,
       ),
       trackColor: WidgetStateProperty.resolveWith(
-        (states) =>
-            states.contains(WidgetState.selected) ? t.accent : t.surfaceSunken,
+        (states) => states.contains(WidgetState.selected)
+            ? t.accent.withValues(alpha: 0.82)
+            : t.surfaceSunken.withValues(alpha: 0.42),
       ),
       trackOutlineColor: WidgetStateProperty.resolveWith(
         (states) =>
@@ -180,7 +181,7 @@ ThemeData buildAppTheme(AppTokens t) {
       contentTextStyle: text.bodyMedium,
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: t.surfaceElevated,
+      color: t.surfaceElevated.withValues(alpha: 0.82),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -191,7 +192,9 @@ ThemeData buildAppTheme(AppTokens t) {
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(t.surfaceElevated),
+        backgroundColor: WidgetStatePropertyAll(
+          t.surfaceElevated.withValues(alpha: 0.82),
+        ),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(

@@ -65,7 +65,10 @@ class AdvancedSettingsSection extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'TTA 会让处理时间增加到约 8 倍，画质提升通常在肉眼不可见的级别。',
-                    style: text.labelSmall?.copyWith(color: t.textSecondary, height: 1.4),
+                    style: text.labelSmall?.copyWith(
+                      color: t.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -99,7 +102,7 @@ class _GpuSelector extends StatelessWidget {
     if (gpus.isEmpty) {
       return Panel(
         padding: const EdgeInsets.all(Gap.md),
-        color: t.surfaceSunken,
+        color: t.surfaceSunken.withValues(alpha: 0.42),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -129,7 +132,10 @@ class _GpuSelector extends StatelessWidget {
         for (final gpu in gpus) ...[
           SelectableCard(
             selected: options.gpuId == gpu.index,
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.md,
+              vertical: Gap.sm,
+            ),
             onTap: () => onChanged(options.copyWith(gpuId: gpu.index)),
             child: Row(
               children: [
@@ -145,8 +151,12 @@ class _GpuSelector extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: text.bodySmall?.copyWith(
-                      color: options.gpuId == gpu.index ? t.textPrimary : t.textSecondary,
-                      fontWeight: options.gpuId == gpu.index ? FontWeight.w600 : FontWeight.w400,
+                      color: options.gpuId == gpu.index
+                          ? t.textPrimary
+                          : t.textSecondary,
+                      fontWeight: options.gpuId == gpu.index
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -184,9 +194,7 @@ class _TileSelector extends StatelessWidget {
     return SegmentedControl<int>(
       value: options.tileSize,
       onChanged: (v) => onChanged(options.copyWith(tileSize: v)),
-      segments: [
-        for (final c in _choices) Segment(c.value, c.label),
-      ],
+      segments: [for (final c in _choices) Segment(c.value, c.label)],
     );
   }
 }
@@ -208,7 +216,7 @@ class _RuntimeSection extends StatelessWidget {
         const SectionLabel('运行环境'),
         Panel(
           padding: const EdgeInsets.all(Gap.md),
-          color: t.surfaceSunken,
+          color: t.surfaceSunken.withValues(alpha: 0.42),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

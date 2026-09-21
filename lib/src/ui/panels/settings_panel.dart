@@ -343,7 +343,9 @@ class _AdvancedToggleState extends State<_AdvancedToggle> {
             horizontal: Gap.md,
           ),
           decoration: BoxDecoration(
-            color: _hovered ? t.surfaceElevated : Colors.transparent,
+            color: _hovered
+                ? t.surfaceElevated.withValues(alpha: 0.45)
+                : Colors.transparent,
             borderRadius: Radii.allSm,
             border: Border.all(color: t.border),
           ),
@@ -390,12 +392,9 @@ class _PanelFooter extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final engine = AppScope.of(context).engine;
 
-    return Container(
+    return GlassSurface(
       padding: const EdgeInsets.all(Gap.lg),
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(top: BorderSide(color: t.border)),
-      ),
+      border: Border(top: BorderSide(color: t.border)),
       child: ListenableBuilder(
         listenable: engine,
         builder: (context, _) {
@@ -549,67 +548,79 @@ class _ProgressSummary extends StatelessWidget {
         builder: (context, eta, _) => ValueListenableBuilder<double>(
           valueListenable: engine.throughput,
           builder: (context, throughput, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '总体进度',
-                        style: text.labelMedium?.copyWith(
-                          color: t.textSecondary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      Fmt.percent(progress, digits: 1),
-                      style: text.labelMedium?.copyWith(
-                        color: t.accent,
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: progress),
-                    duration: const Duration(milliseconds: 160),
-                    curve: Curves.linear,
-                    builder: (context, value, _) => LinearProgressIndicator(
-                      value: value,
-                      minHeight: 5,
-                      backgroundColor: t.surfaceSunken,
-                    ),
-                  ),
-                ),
-                if (eta.inSeconds > 0 || throughput > 0) ...[
-                  const SizedBox(height: 6),
+            return Container(
+              padding: const EdgeInsets.all(Gap.md),
+              decoration: BoxDecoration(
+                color: t.surfaceSunken.withValues(alpha: 0.42),
+                borderRadius: Radii.allSm,
+                border: Border.all(color: t.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      if (eta.inSeconds > 0)
-                        Text(
-                          Fmt.eta(eta),
-                          style: text.labelSmall?.copyWith(
-                            color: t.textTertiary,
+                      Expanded(
+                        child: Text(
+                          '总体进度',
+                          style: text.labelMedium?.copyWith(
+                            color: t.textSecondary,
                           ),
                         ),
-                      const Spacer(),
-                      if (throughput > 0)
-                        Text(
-                          '${(throughput / 1e6).toStringAsFixed(2)} MP/s',
-                          style: text.labelSmall?.copyWith(
-                            color: t.textTertiary,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                      ),
+                      Text(
+                        Fmt.percent(progress, digits: 1),
+                        style: text.labelMedium?.copyWith(
+                          color: t.accent,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: progress),
+                      duration: const Duration(milliseconds: 160),
+                      curve: Curves.linear,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        value: value,
+                        minHeight: 5,
+                        backgroundColor: t.surfaceSunken.withValues(
+                          alpha: 0.42,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (eta.inSeconds > 0 || throughput > 0) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (eta.inSeconds > 0)
+                          Text(
+                            Fmt.eta(eta),
+                            style: text.labelSmall?.copyWith(
+                              color: t.textTertiary,
+                            ),
+                          ),
+                        const Spacer(),
+                        if (throughput > 0)
+                          Text(
+                            '${(throughput / 1e6).toStringAsFixed(2)} MP/s',
+                            style: text.labelSmall?.copyWith(
+                              color: t.textTertiary,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             );
           },
         ),
